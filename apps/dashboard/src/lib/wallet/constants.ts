@@ -38,5 +38,9 @@ export const ERC20_TRANSFER_ABI = [
   },
 ] as const;
 
-// Tier 1 Agent session key per-call cap (must match backend)
-export const AGENT_SESSION_PER_CALL_CAP = parseUnits("0.01", 6);
+// Default Agent session key per-call cap (USDC atomic units, 6 decimals).
+// Caller can override via provisionAgent({ onChainCapAtomic }).
+export const DEFAULT_ON_CHAIN_CAP_ATOMIC = parseUnits("0.01", 6);
+
+// Legacy export — kept for any code that still references the old name.
+export const AGENT_SESSION_PER_CALL_CAP = DEFAULT_ON_CHAIN_CAP_ATOMIC;

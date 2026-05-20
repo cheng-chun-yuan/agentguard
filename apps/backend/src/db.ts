@@ -65,6 +65,8 @@ db.exec(`
 const migrations: { name: string; sql: string }[] = [
   { name: "tx_log.detection", sql: `ALTER TABLE tx_log ADD COLUMN detection TEXT` },
   { name: "tx_log.triggered_by", sql: `ALTER TABLE tx_log ADD COLUMN triggered_by TEXT` },
+  { name: "agents.policy_json", sql: `ALTER TABLE agents ADD COLUMN policy_json TEXT` },
+  { name: "agents.on_chain_cap_atomic", sql: `ALTER TABLE agents ADD COLUMN on_chain_cap_atomic TEXT` },
 ];
 for (const m of migrations) {
   try {
@@ -88,6 +90,11 @@ export type AgentRow = {
   permission_account_blob: string | null;
   init_tx_hash: string | null;
   status: "provisioning" | "active" | "failed";
+  /** JSON-encoded soft policy. NULL means use defaults. */
+  policy_json: string | null;
+  /** USDC atomic units (6 decimals) — the on-chain validator cap.
+   *  Stored for display; the source of truth is the smart contract. */
+  on_chain_cap_atomic: string | null;
   created_at: number;
 };
 

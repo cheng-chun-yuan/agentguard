@@ -59,7 +59,7 @@ import {
 import { recoverAuthorizationAddress } from "viem/utils";
 
 import {
-  AGENT_SESSION_PER_CALL_CAP,
+  DEFAULT_ON_CHAIN_CAP_ATOMIC,
   ERC20_TRANSFER_ABI,
   KERNEL_V3_3_IMPLEMENTATION_ADDRESS,
   USDC_ADDRESS,
@@ -88,6 +88,11 @@ export type ProvisionInput = {
    *  7702 auth so ZeroDev doesn't try to sign it via viem (which fails on
    *  Privy's JSON-RPC accounts). */
   signAuthorization: SignAuthorizationFn;
+  /** On-chain validator cap in USDC atomic units (6 decimals).
+   *  Defaults to 0.01 USDC. This becomes the hard limit baked into the
+   *  Kernel permission validator; changing it later requires rotating the
+   *  session key. */
+  onChainCapAtomic?: bigint;
 };
 
 export type ProvisionedAgent = {
@@ -130,6 +135,7 @@ export async function provisionAgent(
     signer: agentSessionAccount,
   });
 
+  const onChainCap = input.onChainCapAtomic ?? DEFAULT_ON_CHAIN_CAP_ATOMIC;
   const callPolicy = toCallPolicy({
     policyVersion: CallPolicyVersion.V0_0_4,
     permissions: [
@@ -142,7 +148,7 @@ export async function provisionAgent(
           null,
           {
             condition: ParamCondition.LESS_THAN_OR_EQUAL,
-            value: AGENT_SESSION_PER_CALL_CAP,
+            value: onChainCap,
           },
         ],
       },
@@ -252,6 +258,7 @@ export async function provisionAgent(
       agentSessionPrivkey: agentSessionPrivateKey,
       permissionAccountBlob,
       initTxHash,
+      onChainCapAtomic: onChainCap.toString(),
     }),
   });
 

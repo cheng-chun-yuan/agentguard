@@ -28,6 +28,7 @@ export const agentsRoute = new Elysia({ prefix: "/agents" })
         agentSessionPrivkey: body.agentSessionPrivkey,
         permissionAccountBlob: body.permissionAccountBlob,
         initTxHash: body.initTxHash,
+        onChainCapAtomic: body.onChainCapAtomic,
       }),
     {
       body: t.Object({
@@ -38,6 +39,7 @@ export const agentsRoute = new Elysia({ prefix: "/agents" })
         agentSessionPrivkey: t.String({ pattern: "^0x[a-fA-F0-9]{64}$" }),
         permissionAccountBlob: t.String({ minLength: 16 }),
         initTxHash: t.String({ pattern: "^0x[a-fA-F0-9]{64}$" }),
+        onChainCapAtomic: t.Optional(t.String({ pattern: "^[0-9]+$" })),
       }),
     },
   )

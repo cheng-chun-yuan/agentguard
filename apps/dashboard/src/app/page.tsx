@@ -12,6 +12,7 @@ import {
 } from "@/lib/wallet/provision";
 import { fetchAgentsForOwner, type AgentListEntry } from "@/lib/activity";
 import { ActivityFeed } from "./activity-feed";
+import { PolicyPanel } from "./policy-panel";
 import type { EIP1193Provider, Address } from "viem";
 import type { SignAuthorizationReturnType } from "viem/accounts";
 
@@ -397,6 +398,8 @@ function Workspace({
         )}
       </div>
 
+      {provisioned && <PolicyPanel apiKey={provisioned.apiKey} />}
+
       {activeAgentId ? (
         <ActivityFeed agentId={activeAgentId} />
       ) : (
@@ -523,6 +526,7 @@ function CreateAgentPanel({
   onProvisioned: (agent: ProvisionedAgent) => void;
 }) {
   const [name, setName] = useState("my-agent");
+  const [onChainCap, setOnChainCap] = useState("0.01");
   const [status, setStatus] = useState<
     "idle" | "provisioning" | "error"
   >("idle");
@@ -537,12 +541,21 @@ function CreateAgentPanel({
     try {
       const provider =
         (await embeddedWallet.getEthereumProvider()) as EIP1193Provider;
+      // USDC has 6 decimals — translate the human input to atomic units.
+      const capWhole = onChainCap.trim();
+      let capAtomic: bigint | undefined;
+      if (capWhole && /^[0-9]+(\.[0-9]+)?$/.test(capWhole)) {
+        const [intPart, fracPart = ""] = capWhole.split(".");
+        const padded = (fracPart + "000000").slice(0, 6);
+        capAtomic = BigInt(intPart + padded);
+      }
       const result = await provisionAgent({
         name,
         ownerProvider: provider,
         ownerAddress: embeddedWallet.address as Address,
         signAuthorization: (params) =>
           signAuthorization(params) as Promise<SignAuthorizationReturnType>,
+        onChainCapAtomic: capAtomic,
       });
       onProvisioned(result);
       setStatus("idle");
@@ -644,6 +657,30 @@ function CreateAgentPanel({
             disabled={status === "provisioning"}
             className="border border-[var(--color-border)] bg-[var(--color-bg-inset)] px-3 py-2 font-mono text-[13px] text-[var(--color-fg)] focus:border-[var(--color-accent)] focus:outline-none disabled:opacity-50"
           />
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
+            <span>on-chain hard cap</span>
+            <span className="text-[var(--color-accent)]">baked on-chain</span>
+          </span>
+          <div className="flex items-center gap-2 border border-[var(--color-border)] bg-[var(--color-bg-inset)] px-3 py-2">
+            <input
+              type="text"
+              value={onChainCap}
+              onChange={(e) => setOnChainCap(e.target.value)}
+              disabled={status === "provisioning"}
+              inputMode="decimal"
+              className="flex-1 bg-transparent font-mono text-[13px] text-[var(--color-fg)] focus:outline-none disabled:opacity-50"
+            />
+            <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-fg-dim)]">
+              USDC
+            </span>
+          </div>
+          <span className="font-mono text-[10px] text-[var(--color-fg-dim)]">
+            Kernel validator rejects any single transfer above this. Can&apos;t be
+            edited later without rotating the session key.
+          </span>
         </label>
 
         <button

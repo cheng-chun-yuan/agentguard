@@ -127,6 +127,8 @@ export type RegisterAgentInput = {
   agentSessionPrivkey: string;
   permissionAccountBlob: string;
   initTxHash: string;
+  /** USDC atomic units (6 decimals). Stored for display on the policy panel. */
+  onChainCapAtomic?: string;
 };
 
 /**
@@ -142,8 +144,9 @@ export function registerAgent(input: RegisterAgentInput): CreateAgentResult {
   db.prepare(
     `INSERT INTO agents (id, name, chain, smart_account_address, owner_address,
                          agent_session_pubkey, agent_session_privkey,
-                         permission_account_blob, init_tx_hash, status, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                         permission_account_blob, init_tx_hash, status,
+                         on_chain_cap_atomic, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.name,
@@ -155,6 +158,7 @@ export function registerAgent(input: RegisterAgentInput): CreateAgentResult {
     input.permissionAccountBlob,
     input.initTxHash,
     "active",
+    input.onChainCapAtomic ?? null,
     now,
   );
 
