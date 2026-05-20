@@ -15,6 +15,9 @@ const app = new Elysia()
         "http://localhost:4000",
         "https://agentguard.polyoctant.com",
         "https://api-agentguard.polyoctant.com",
+        "https://agentguard-dashboard-seven.vercel.app",
+        // Vercel preview deployments — match `*-<hash>.vercel.app`
+        /^https:\/\/agentguard-dashboard.*\.vercel\.app$/,
       ],
       credentials: true,
     }),
