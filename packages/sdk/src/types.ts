@@ -15,13 +15,23 @@ export type TransferOptions = {
   amount: string;
 };
 
-export type TxResult = {
-  status: "submitted" | "pending_approval" | "rejected";
-  userOpHash?: Hex;
-  txHash?: Hex;
-  approvalUrl?: string;
-  reason?: string;
-};
+/** Result tier — which execution path the policy engine chose. */
+export type Tier = "auto" | "guard" | "human";
+
+export type TxResult =
+  | {
+      status: "submitted";
+      tier: "auto" | "guard";
+      userOpHash: Hex;
+      txHash: Hex;
+    }
+  | {
+      status: "pending_approval";
+      tier: "human";
+      approvalId: string;
+      approvalUrl: string;
+      reason: string;
+    };
 
 export class AgentGuardError extends Error {
   constructor(

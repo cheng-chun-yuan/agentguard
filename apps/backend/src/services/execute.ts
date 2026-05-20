@@ -6,7 +6,9 @@ import {
 } from "viem";
 import { sessionClientFor, USDC_ADDRESS } from "./kernel";
 import type { AgentRow } from "../db";
+import { env } from "../env";
 import { logActivity } from "./activity";
+import { evaluatePolicy } from "./policy";
 
 // USDC has 6 decimals on Base.
 const TOKEN_REGISTRY: Record<string, { address: Address; decimals: number }> = {
@@ -33,11 +35,20 @@ export type TransferRequest = {
   amount: string; // human-readable, e.g. "0.001"
 };
 
-export type ExecuteResult = {
-  status: "submitted";
-  userOpHash: Hex;
-  txHash: Hex;
-};
+export type ExecuteResult =
+  | {
+      status: "submitted";
+      tier: "auto" | "guard";
+      userOpHash: Hex;
+      txHash: Hex;
+    }
+  | {
+      status: "pending_approval";
+      tier: "human";
+      approvalId: string;
+      approvalUrl: string;
+      reason: string;
+    };
 
 /**
  * Tier-1 execution path: sign + send a UserOp using the Agent's session key.
@@ -63,6 +74,38 @@ export async function executeTransfer(
       `Agent ${req.agent.id} has no permission_account_blob — was provisioned before the M1.4.x migration. Recreate it via the dashboard.`,
     );
   }
+
+  // ── (1) Off-chain policy evaluation ───────────────────────────────
+  const policy = evaluatePolicy({
+    agent: req.agent,
+    to: req.to,
+    amountWei,
+  });
+
+  // HUMAN tier never reaches the bundler. Log a pending row and return
+  // an approval handle that the dashboard (M2.3) will action.
+  if (policy.tier === "human") {
+    const entry = logActivity({
+      agentId: req.agent.id,
+      kind: "transfer",
+      tier: "human",
+      status: "pending_approval",
+      target: req.to,
+      token: req.token.toUpperCase(),
+      amount: req.amount,
+      error: policy.reasons.join("; "),
+    });
+    return {
+      status: "pending_approval",
+      tier: "human",
+      approvalId: entry.id,
+      approvalUrl: `${env.DASHBOARD_ORIGIN}/?approval=${entry.id}`,
+      reason: policy.reasons.join("; "),
+    };
+  }
+
+  // AUTO / GUARD both execute via the session key. GUARD is "logged but
+  // allowed" for now; later we can wire stricter guard behavior in.
 
   try {
     const client = await sessionClientFor({
@@ -90,7 +133,7 @@ export async function executeTransfer(
     logActivity({
       agentId: req.agent.id,
       kind: "transfer",
-      tier: "auto",
+      tier: policy.tier,
       status: "submitted",
       target: req.to,
       token: req.token.toUpperCase(),
@@ -99,13 +142,13 @@ export async function executeTransfer(
       txHash,
     });
 
-    return { status: "submitted", userOpHash, txHash };
+    return { status: "submitted", tier: policy.tier, userOpHash, txHash };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logActivity({
       agentId: req.agent.id,
       kind: "transfer",
-      tier: "auto",
+      tier: policy.tier,
       status: "rejected",
       target: req.to,
       token: req.token.toUpperCase(),
