@@ -1,0 +1,25 @@
+{
+  "name": "agentguard-poc-7702",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Proof-of-concept for AgentGuard's wallet stack: EIP-7702 + ZeroDev Kernel v3 + session key permissions + paymaster",
+  "scripts": {
+    "poc": "tsx src/main.ts",
+    "poc:setup": "tsx src/main.ts --setup-only",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@zerodev/ecdsa-validator": "^5.4.0",
+    "@zerodev/permissions": "^5.5.0",
+    "@zerodev/sdk": "^5.4.0",
+    "dotenv": "^16.4.5",
+    "tslib": "^2.8.1",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
