@@ -40,7 +40,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           accentColor: "#0EA5E9",
           logo: undefined,
         },
-        loginMethods: ["email", "wallet", "google"],
+        loginMethods: ["email", "wallet", "passkey"],
         embeddedWallets: {
           ethereum: {
             createOnLogin: "users-without-wallets",

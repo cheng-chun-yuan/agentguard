@@ -12,5 +12,5 @@ export const env = {
   BASE_SEPOLIA_RPC: required("BASE_SEPOLIA_RPC"),
   DEV_OWNER_PRIVATE_KEY: required("DEV_OWNER_PRIVATE_KEY") as Hex,
   DB_PATH: process.env.DB_PATH ?? "./agentguard.db",
-  DASHBOARD_ORIGIN: process.env.DASHBOARD_ORIGIN ?? "http://localhost:3000",
+  DASHBOARD_ORIGIN: process.env.DASHBOARD_ORIGIN ?? "http://localhost:4000",
 };

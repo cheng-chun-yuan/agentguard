@@ -12,7 +12,7 @@ export {
   type TxResult,
 };
 
-const DEFAULT_BASE_URL = "http://localhost:3737";
+const DEFAULT_BASE_URL = "http://localhost:3737"; // backend default; dashboard runs on :4000
 
 /**
  * AgentGuard SDK — a thin client that lets your AI Agent transact on-chain

@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@elysiajs/cors": "^1.4.2",
     "@zerodev/ecdsa-validator": "^5.4.0",
     "@zerodev/permissions": "^5.5.0",
     "@zerodev/sdk": "^5.4.0",

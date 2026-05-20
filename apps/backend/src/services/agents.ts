@@ -116,3 +116,61 @@ export function listAgents() {
     )
     .all();
 }
+
+export type RegisterAgentInput = {
+  name: string;
+  smartAccountAddress: string;
+  ownerAddress: string;
+  agentSessionPubkey: string;
+  agentSessionPrivkey: string;
+  initTxHash: string;
+};
+
+/**
+ * Register an Agent that was provisioned client-side (by the dashboard,
+ * via the user's Privy embedded wallet). The backend never sees the
+ * owner's private key — only the smart-account address and the agent
+ * session key it'll use for signing transfers on the user's behalf.
+ */
+export function registerAgent(input: RegisterAgentInput): CreateAgentResult {
+  const id = randomUUID();
+  const now = Date.now();
+
+  db.prepare(
+    `INSERT INTO agents (id, name, chain, smart_account_address, owner_address,
+                         agent_session_pubkey, agent_session_privkey,
+                         init_tx_hash, status, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    id,
+    input.name,
+    "base-sepolia",
+    input.smartAccountAddress,
+    input.ownerAddress,
+    input.agentSessionPubkey,
+    input.agentSessionPrivkey,
+    input.initTxHash,
+    "active",
+    now,
+  );
+
+  const apiKey = `ag_test_${randomBytes(24).toString("hex")}`;
+  db.prepare(
+    `INSERT INTO api_keys (key, agent_id, created_at) VALUES (?, ?, ?)`,
+  ).run(apiKey, id, now);
+
+  return {
+    agent: {
+      id,
+      name: input.name,
+      chain: "base-sepolia",
+      smartAccountAddress: input.smartAccountAddress,
+      ownerAddress: input.ownerAddress,
+      agentSessionAddress: input.agentSessionPubkey,
+      initTxHash: input.initTxHash,
+      status: "active",
+      createdAt: now,
+    },
+    apiKey,
+  };
+}

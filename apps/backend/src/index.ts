@@ -1,10 +1,21 @@
 import { Elysia } from "elysia";
+import { cors } from "@elysiajs/cors";
 import { env } from "./env";
 import { agentsRoute } from "./routes/agents";
 import { executeRoute } from "./routes/execute";
 import { AuthError } from "./middleware/auth";
 
 const app = new Elysia()
+  .use(
+    cors({
+      origin: [
+        env.DASHBOARD_ORIGIN,
+        "http://localhost:4000",
+        "https://agentguard.polyoctant.com",
+      ],
+      credentials: true,
+    }),
+  )
   .onError(({ error, code, set }) => {
     const message = error instanceof Error ? error.message : String(error);
     if (error instanceof AuthError) {
