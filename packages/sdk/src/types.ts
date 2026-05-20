@@ -36,6 +36,45 @@ export type TransferOptions = {
   intentContext?: IntentContext;
 };
 
+// ─── x402 — HTTP-native micropayments ────────────────────────────────
+
+export type X402PaymentRequirement = {
+  scheme: string;
+  network: string;
+  /** Atomic-unit amount (string). USDC = 6 decimals. */
+  maxAmountRequired: string;
+  resource: string;
+  description?: string;
+  mimeType?: string;
+  /** Recipient address that gets paid. */
+  payTo: `0x${string}`;
+  maxTimeoutSeconds?: number;
+  /** Token contract address. */
+  asset: `0x${string}`;
+  extra?: { name?: string; version?: string; decimals?: number };
+};
+
+export type X402Response = {
+  x402Version: number;
+  accepts: X402PaymentRequirement[];
+  error?: string;
+};
+
+/** Encoded into the `X-PAYMENT` header on a 402-retry request. */
+export type X402Settlement = {
+  x402Version: 1;
+  /** "settled" = AgentGuard already executed the on-chain payment. */
+  scheme: "settled";
+  network: string;
+  payload: {
+    txHash: Hex;
+    from: `0x${string}`;
+    to: `0x${string}`;
+    value: string;
+    asset: `0x${string}`;
+  };
+};
+
 /** Result tier — which execution path the policy engine chose. */
 export type Tier = "auto" | "guard" | "human";
 

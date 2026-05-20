@@ -5,6 +5,9 @@ import {
   type IntentContext,
   type TransferOptions,
   type TxResult,
+  type X402PaymentRequirement,
+  type X402Response,
+  type X402Settlement,
 } from "./types";
 
 export {
@@ -14,6 +17,9 @@ export {
   type IntentContext,
   type TransferOptions,
   type TxResult,
+  type X402PaymentRequirement,
+  type X402Response,
+  type X402Settlement,
 };
 
 const DEFAULT_BASE_URL = "http://localhost:3737"; // backend default; dashboard runs on :4000
@@ -52,6 +58,69 @@ export class AgentGuard {
     return this.request<TxResult>("/transfer", options);
   }
 
+  /**
+   * `fetch` with HTTP 402 support — the agent transparently pays for any
+   * resource that advertises x402 payment requirements, then retries with
+   * the `X-PAYMENT` header. Micropayments stay within the session-key
+   * cap so the AI Detect / policy escalation paths are not triggered.
+   *
+   * Hard rule: if the resource asks for *more* than what the agent's
+   * session key is permitted to spend, the underlying transfer falls
+   * back to GUARD/HUMAN and `fetch` throws — *no* over-policy payment
+   * is ever attempted under the user's nose.
+   */
+  async fetch(input: string, init?: RequestInit): Promise<Response> {
+    const first = await fetch(input, init);
+    if (first.status !== 402) return first;
+
+    const requirements = await parseX402(first);
+    if (!requirements) {
+      // Server returned 402 without proper x402 metadata — surface as-is
+      return first;
+    }
+
+    const decimals = requirements.extra?.decimals ?? 6;
+    const humanAmount = atomicToHuman(requirements.maxAmountRequired, decimals);
+    const tokenSym = (requirements.extra?.name ?? "USDC").toUpperCase();
+    if (tokenSym !== "USDC") {
+      throw new AgentGuardError(
+        `x402 asset ${tokenSym} not supported in this SDK version (USDC only)`,
+        400,
+      );
+    }
+
+    const result = await this.transfer({
+      to: requirements.payTo,
+      token: "USDC",
+      amount: humanAmount,
+    });
+
+    if (result.status !== "submitted") {
+      throw new AgentGuardError(
+        `x402 payment for ${input} bounced to ${result.tier.toUpperCase()} tier — not retrying`,
+        402,
+      );
+    }
+
+    const settlement: X402Settlement = {
+      x402Version: 1,
+      scheme: "settled",
+      network: requirements.network,
+      payload: {
+        txHash: result.txHash,
+        from: "0x0000000000000000000000000000000000000000",
+        to: requirements.payTo,
+        value: requirements.maxAmountRequired,
+        asset: requirements.asset,
+      },
+    };
+
+    const headers = new Headers(init?.headers ?? {});
+    headers.set("X-PAYMENT", encodeBase64(JSON.stringify(settlement)));
+
+    return fetch(input, { ...init, headers });
+  }
+
   private async request<T>(path: string, body: unknown): Promise<T> {
     const res = await fetch(`${this.baseUrl}${path}`, {
       method: "POST",
@@ -80,4 +149,36 @@ export class AgentGuard {
 
     return parsed as T;
   }
+}
+
+// ── x402 helpers ────────────────────────────────────────────────────
+
+async function parseX402(
+  res: Response,
+): Promise<X402PaymentRequirement | null> {
+  let body: X402Response | undefined;
+  try {
+    body = (await res.clone().json()) as X402Response;
+  } catch {
+    return null;
+  }
+  if (!body || !Array.isArray(body.accepts) || body.accepts.length === 0)
+    return null;
+  return body.accepts[0]!;
+}
+
+function atomicToHuman(atomic: string, decimals: number): string {
+  // Avoid bigint stringify edge-cases — accept either decimal or bigint string.
+  const value = BigInt(atomic);
+  const whole = value / 10n ** BigInt(decimals);
+  const fraction = value % 10n ** BigInt(decimals);
+  const fracStr = fraction.toString().padStart(decimals, "0").replace(/0+$/, "");
+  return fracStr ? `${whole}.${fracStr}` : `${whole}`;
+}
+
+function encodeBase64(s: string): string {
+  // Bun/Node 18+ and modern browsers all expose `btoa`.
+  return typeof btoa === "function"
+    ? btoa(s)
+    : Buffer.from(s, "utf8").toString("base64");
 }

@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "smoke": "bun src/use-sdk.ts",
+    "x402": "bun src/x402-demo.ts",
+    "x402:server": "bun src/x402-server.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
