@@ -9,7 +9,7 @@ Standalone proof-of-concept validating the technical stack before building the S
 4. Paymaster sponsors gas — the user pays zero
 5. The validator rejects out-of-policy attempts
 
-**If all five pass, the architecture in SPEC.md is buildable.**
+**If all five pass, the architecture in [../docs/SPEC.md](../docs/SPEC.md) is buildable.**
 
 ---
 
@@ -105,4 +105,4 @@ Expected output:
 
 ## What to do after this works
 
-Move on to **M1** in `../SPEC.md` — wrap this into an SDK package + start the dashboard scaffold.
+Move on to **M1** in [`../docs/SPEC.md`](../docs/SPEC.md) — wrap this into an SDK package + start the dashboard scaffold.

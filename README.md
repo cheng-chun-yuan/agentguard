@@ -6,8 +6,10 @@ Running today: end-to-end onboarding, off-chain policy engine, owner-signed appr
 
 **Live demo:** https://agentguard-dashboard-seven.vercel.app
 **Repo:** https://github.com/cheng-chun-yuan/agentguard
-**Pitch deck:** [`PITCH-DECK.pdf`](./PITCH-DECK.pdf) · [`PITCH-DECK.pptx`](./PITCH-DECK.pptx) · source: [`PITCH-DECK.md`](./PITCH-DECK.md)
-**Demo recording script:** [`DEMO-SCRIPT.md`](./DEMO-SCRIPT.md)
+**Pitch deck:** [`docs/PITCH-DECK.pdf`](./docs/PITCH-DECK.pdf) · [`pptx`](./docs/PITCH-DECK.pptx) · [source](./docs/PITCH-DECK.md)
+**Project summary:** [`docs/PROJECT-DESCRIPTION.pdf`](./docs/PROJECT-DESCRIPTION.pdf) · [source](./docs/PROJECT-DESCRIPTION.md)
+**Demo recording script:** [`docs/DEMO-SCRIPT.md`](./docs/DEMO-SCRIPT.md)
+**Design doc:** [`docs/SPEC.md`](./docs/SPEC.md)
 
 ---
 
@@ -254,7 +256,7 @@ agentguard/
 ├── packages/
 │   └── sdk/           @agentguard/sdk — transfer · fetch (x402) · IntentContext
 ├── poc-7702/          Pre-monorepo proof of EIP-7702 + ZeroDev Kernel v3
-└── SPEC.md            Product spec — architecture, threat model, milestones
+└── docs/              SPEC · PITCH-DECK (md/pdf/pptx) · PROJECT-DESCRIPTION · DEMO-SCRIPT
 ```
 
 ---
