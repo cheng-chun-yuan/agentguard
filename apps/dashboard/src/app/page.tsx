@@ -813,48 +813,54 @@ function CreateAgentPanel({
           </span>
         </label>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
-              session expires in
-            </span>
-            <div className="flex items-center gap-2 border border-[var(--color-border)] bg-[var(--color-bg-inset)] px-3 py-2">
-              <input
-                type="text"
-                value={expiryHours}
-                onChange={(e) => setExpiryHours(e.target.value)}
-                disabled={status === "provisioning"}
-                inputMode="numeric"
-                className="flex-1 bg-transparent font-mono text-[13px] text-[var(--color-fg)] focus:outline-none disabled:opacity-50"
-              />
-              <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-fg-dim)]">
-                hours
+        <div className="flex flex-col gap-1.5">
+          <span className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
+            <span>session policy</span>
+            <span className="text-[var(--color-accent)]">baked on-chain</span>
+          </span>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[10px] tracking-[0.15em] text-[var(--color-fg-dim)]">
+                expires in
               </span>
-            </div>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
-              max calls / window
-            </span>
-            <div className="flex items-center gap-2 border border-[var(--color-border)] bg-[var(--color-bg-inset)] px-3 py-2">
-              <input
-                type="text"
-                value={rateLimit}
-                onChange={(e) => setRateLimit(e.target.value)}
-                disabled={status === "provisioning"}
-                inputMode="numeric"
-                className="flex-1 bg-transparent font-mono text-[13px] text-[var(--color-fg)] focus:outline-none disabled:opacity-50"
-              />
-              <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-fg-dim)]">
-                calls
+              <div className="flex items-center gap-2 border border-[var(--color-border)] bg-[var(--color-bg-inset)] px-3 py-2">
+                <input
+                  type="text"
+                  value={expiryHours}
+                  onChange={(e) => setExpiryHours(e.target.value)}
+                  disabled={status === "provisioning"}
+                  inputMode="numeric"
+                  className="min-w-0 flex-1 bg-transparent font-mono text-[13px] text-[var(--color-fg)] focus:outline-none disabled:opacity-50"
+                />
+                <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-[var(--color-fg-dim)]">
+                  hours
+                </span>
+              </div>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[10px] tracking-[0.15em] text-[var(--color-fg-dim)]">
+                max calls / window
               </span>
-            </div>
-          </label>
+              <div className="flex items-center gap-2 border border-[var(--color-border)] bg-[var(--color-bg-inset)] px-3 py-2">
+                <input
+                  type="text"
+                  value={rateLimit}
+                  onChange={(e) => setRateLimit(e.target.value)}
+                  disabled={status === "provisioning"}
+                  inputMode="numeric"
+                  className="min-w-0 flex-1 bg-transparent font-mono text-[13px] text-[var(--color-fg)] focus:outline-none disabled:opacity-50"
+                />
+                <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-[var(--color-fg-dim)]">
+                  calls
+                </span>
+              </div>
+            </label>
+          </div>
+          <span className="font-mono text-[10px] text-[var(--color-fg-dim)]">
+            Kernel validator rejects calls after expiry, or beyond the rate-limit
+            count within the window — even if the privkey leaks.
+          </span>
         </div>
-        <span className="-mt-1 font-mono text-[10px] text-[var(--color-fg-dim)]">
-          On-chain throttle: Kernel validator rejects calls after expiry, or beyond
-          the rate-limit count within the window — even if the privkey leaks.
-        </span>
 
         <button
           onClick={handleCreate}
