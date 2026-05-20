@@ -1,12 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { usePrivy, useWallets } from "@privy-io/react-auth";
+import {
+  usePrivy,
+  useWallets,
+  useSign7702Authorization,
+} from "@privy-io/react-auth";
 import {
   provisionAgent,
   type ProvisionedAgent,
 } from "@/lib/wallet/provision";
 import type { EIP1193Provider, Address } from "viem";
+import type { SignAuthorizationReturnType } from "viem/accounts";
 
 export default function Home() {
   const { ready, authenticated, user, login, logout } = usePrivy();
@@ -147,6 +152,7 @@ function CreateAgentCard({
   >("idle");
   const [agent, setAgent] = useState<ProvisionedAgent | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { signAuthorization } = useSign7702Authorization();
 
   async function handleCreate() {
     if (!embeddedWallet) return;
@@ -158,6 +164,8 @@ function CreateAgentCard({
         name,
         ownerProvider: provider,
         ownerAddress: embeddedWallet.address as Address,
+        signAuthorization: (params) =>
+          signAuthorization(params) as Promise<SignAuthorizationReturnType>,
       });
       setAgent(result);
       setStatus("success");

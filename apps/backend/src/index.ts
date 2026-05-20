@@ -12,6 +12,7 @@ const app = new Elysia()
         env.DASHBOARD_ORIGIN,
         "http://localhost:4000",
         "https://agentguard.polyoctant.com",
+        "https://api-agentguard.polyoctant.com",
       ],
       credentials: true,
     }),

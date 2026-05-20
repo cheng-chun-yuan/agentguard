@@ -6,16 +6,21 @@ db.exec("PRAGMA journal_mode = WAL");
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS agents (
-    id                     TEXT PRIMARY KEY,
-    name                   TEXT NOT NULL,
-    chain                  TEXT NOT NULL,
-    smart_account_address  TEXT NOT NULL,
-    owner_address          TEXT NOT NULL,
-    agent_session_pubkey   TEXT NOT NULL,
-    agent_session_privkey  TEXT NOT NULL,
-    init_tx_hash           TEXT,
-    status                 TEXT NOT NULL,
-    created_at             INTEGER NOT NULL
+    id                          TEXT PRIMARY KEY,
+    name                        TEXT NOT NULL,
+    chain                       TEXT NOT NULL,
+    smart_account_address       TEXT NOT NULL,
+    owner_address               TEXT NOT NULL,
+    agent_session_pubkey        TEXT NOT NULL,
+    agent_session_privkey       TEXT NOT NULL,
+    -- Serialized permission account blob produced by ZeroDev's
+    -- serializePermissionAccount(). Contains everything needed to
+    -- reconstruct a session-key-signed kernel client without the
+    -- owner's private key.
+    permission_account_blob     TEXT,
+    init_tx_hash                TEXT,
+    status                      TEXT NOT NULL,
+    created_at                  INTEGER NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS api_keys (
@@ -37,6 +42,7 @@ export type AgentRow = {
   owner_address: string;
   agent_session_pubkey: string;
   agent_session_privkey: string;
+  permission_account_blob: string | null;
   init_tx_hash: string | null;
   status: "provisioning" | "active" | "failed";
   created_at: number;

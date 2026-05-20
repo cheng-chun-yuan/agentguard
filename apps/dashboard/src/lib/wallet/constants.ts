@@ -14,6 +14,13 @@ export const chain = baseSepolia;
 export const entryPoint = getEntryPoint("0.7");
 export const kernelVersion = KERNEL_V3_3;
 
+// Kernel v3.3 implementation contract — the address an EOA delegates to via
+// EIP-7702 authorization. Hardcoded here to avoid a private import; matches
+// `KernelVersionToAddressesMap["0.3.3"].accountImplementationAddress` in
+// @zerodev/sdk/_esm/constants.js.
+export const KERNEL_V3_3_IMPLEMENTATION_ADDRESS: Address =
+  "0xd6CEDDe84be40893d153Be9d467CD6aD37875b28";
+
 // Base Sepolia testnet USDC
 export const USDC_ADDRESS: Address =
   "0x036CbD53842c5426634e7929541eC2318f3dCF7e";

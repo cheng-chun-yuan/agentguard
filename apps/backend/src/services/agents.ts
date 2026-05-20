@@ -62,6 +62,7 @@ export async function createAgent(
        owner_address = ?,
        agent_session_pubkey = ?,
        agent_session_privkey = ?,
+       permission_account_blob = ?,
        init_tx_hash = ?,
        status = 'active'
      WHERE id = ?`,
@@ -70,6 +71,7 @@ export async function createAgent(
     result.ownerAddress,
     result.agentSessionAddress,
     result.agentSessionPrivateKey,
+    result.permissionAccountBlob,
     result.initTxHash,
     id,
   );
@@ -123,6 +125,7 @@ export type RegisterAgentInput = {
   ownerAddress: string;
   agentSessionPubkey: string;
   agentSessionPrivkey: string;
+  permissionAccountBlob: string;
   initTxHash: string;
 };
 
@@ -139,8 +142,8 @@ export function registerAgent(input: RegisterAgentInput): CreateAgentResult {
   db.prepare(
     `INSERT INTO agents (id, name, chain, smart_account_address, owner_address,
                          agent_session_pubkey, agent_session_privkey,
-                         init_tx_hash, status, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                         permission_account_blob, init_tx_hash, status, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.name,
@@ -149,6 +152,7 @@ export function registerAgent(input: RegisterAgentInput): CreateAgentResult {
     input.ownerAddress,
     input.agentSessionPubkey,
     input.agentSessionPrivkey,
+    input.permissionAccountBlob,
     input.initTxHash,
     "active",
     now,

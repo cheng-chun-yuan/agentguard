@@ -57,9 +57,14 @@ export async function executeTransfer(
 
   const amountWei = parseUnits(req.amount, token.decimals);
 
+  if (!req.agent.permission_account_blob) {
+    throw new Error(
+      `Agent ${req.agent.id} has no permission_account_blob — was provisioned before the M1.4.x migration. Recreate it via the dashboard.`,
+    );
+  }
+
   const client = await sessionClientFor({
-    ownerAddress: req.agent.owner_address as Address,
-    agentSessionPrivateKey: req.agent.agent_session_privkey as Hex,
+    permissionAccountBlob: req.agent.permission_account_blob,
   });
 
   const callData = await client.account.encodeCalls([

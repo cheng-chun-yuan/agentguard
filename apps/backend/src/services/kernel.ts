@@ -18,7 +18,11 @@ import {
 } from "@zerodev/sdk";
 import { signerToEcdsaValidator } from "@zerodev/ecdsa-validator";
 import { KERNEL_V3_3, getEntryPoint } from "@zerodev/sdk/constants";
-import { toPermissionValidator } from "@zerodev/permissions";
+import {
+  deserializePermissionAccount,
+  serializePermissionAccount,
+  toPermissionValidator,
+} from "@zerodev/permissions";
 import { toECDSASigner } from "@zerodev/permissions/signers";
 import {
   toCallPolicy,
@@ -33,11 +37,7 @@ import {
   type Address,
   type Hex,
 } from "viem";
-import {
-  generatePrivateKey,
-  privateKeyToAccount,
-  type PrivateKeyAccount,
-} from "viem/accounts";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
 
 import { env } from "../env";
@@ -95,6 +95,7 @@ export type ProvisionResult = {
   ownerAddress: Address;
   agentSessionPrivateKey: Hex;
   agentSessionAddress: Address;
+  permissionAccountBlob: string;
   initTxHash: Hex;
 };
 
@@ -187,71 +188,44 @@ export async function provisionAgent(): Promise<ProvisionResult> {
     hash: opHash,
   });
 
+  // Serialize the permission account so the backend can later reconstruct
+  // a session-key-signed kernel client without the owner key.
+  const permissionAccountBlob = await serializePermissionAccount(
+    kernelAccount as Parameters<typeof serializePermissionAccount>[0],
+    agentSessionPrivateKey,
+  );
+
   return {
     smartAccountAddress: kernelAccount.address as Address,
     ownerAddress: ownerAccount.address,
     agentSessionPrivateKey,
     agentSessionAddress: agentSessionAccount.address,
+    permissionAccountBlob,
     initTxHash: receipt.receipt.transactionHash as Hex,
   };
 }
 
-/** Helper that materializes an Agent's session-key-signed client from stored privkey. */
+/**
+ * Build a session-key-signed client for an existing Agent.
+ *
+ * Uses the serialized permission-account blob produced at provisioning
+ * time. `deserializePermissionAccount` reconstructs a kernel account with
+ * only the regular (session-key) validator — no sudo signer involved.
+ * The blob embeds the session key, the policy, the smart-account address,
+ * and the 7702 authorization, so the backend never needs the owner key.
+ */
 export async function sessionClientFor(opts: {
-  ownerAddress: Address;
-  agentSessionPrivateKey: Hex;
+  permissionAccountBlob: string;
 }) {
-  const ownerAccount = privateKeyToAccount(env.DEV_OWNER_PRIVATE_KEY);
-  if (ownerAccount.address.toLowerCase() !== opts.ownerAddress.toLowerCase()) {
-    throw new Error("Agent owner does not match DEV_OWNER_PRIVATE_KEY");
-  }
-
-  const sudoValidator = await signerToEcdsaValidator(publicClient, {
-    signer: ownerAccount,
+  const account = await deserializePermissionAccount(
+    publicClient,
     entryPoint,
     kernelVersion,
-  });
-
-  const sessionAccount: PrivateKeyAccount = privateKeyToAccount(
-    opts.agentSessionPrivateKey,
+    opts.permissionAccountBlob,
   );
-  const sessionSigner = await toECDSASigner({ signer: sessionAccount });
-
-  const policy = toCallPolicy({
-    policyVersion: CallPolicyVersion.V0_0_4,
-    permissions: [
-      {
-        target: USDC_ADDRESS,
-        valueLimit: 0n,
-        abi: ERC20_TRANSFER_ABI,
-        functionName: "transfer",
-        args: [
-          null,
-          {
-            condition: ParamCondition.LESS_THAN_OR_EQUAL,
-            value: AGENT_SESSION_PER_CALL_CAP,
-          },
-        ],
-      },
-    ],
-  });
-
-  const permissionValidator = await toPermissionValidator(publicClient, {
-    entryPoint,
-    kernelVersion,
-    signer: sessionSigner,
-    policies: [policy],
-  });
-
-  const kernelAccount = await createKernelAccount(publicClient, {
-    plugins: { sudo: sudoValidator, regular: permissionValidator },
-    entryPoint,
-    kernelVersion,
-    eip7702Account: ownerAccount,
-  } as Parameters<typeof createKernelAccount>[1]);
 
   return createKernelAccountClient({
-    account: kernelAccount,
+    account,
     chain,
     bundlerTransport: http(env.ZERODEV_RPC),
     paymaster: paymasterClient,
