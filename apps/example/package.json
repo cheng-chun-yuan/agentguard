@@ -1,0 +1,17 @@
+{
+  "name": "@agentguard/example",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "smoke": "bun src/use-sdk.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agentguard/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.0",
+    "typescript": "^5.6.0"
+  }
+}
