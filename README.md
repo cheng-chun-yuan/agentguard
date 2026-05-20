@@ -184,11 +184,20 @@ const forecast = await res.json();
 
 ---
 
-## Demo scenes you can reproduce locally
+## Demo scenes
+
+**Fastest path — try it without clone or install.** The landing page at the [live demo URL](https://agentguard-dashboard-seven.vercel.app) ships with two interactive panels that drive a real backend on Base Sepolia using only an API key:
+
+- **`Try /transfer`** — Swagger-style API explorer. Bearer key field, JSON body editor, plus QuickEdit fields (recipient, amount, `userPrompt`) that round-trip into the JSON. Three preset scenarios (✓ aligned · ✗ mismatch · ✗ injection) populate the body + `intentContext`, so you can watch AUTO / GUARD / HUMAN routing live with the AI Detect verdict panel on flagged rows.
+- **`Try guard.fetch (x402)`** — stepped animated demo of the 402 fast path. Press ▶ Run and five steps light up in order: `GET → 402 → POST /transfer (real on-chain call) → GET retry with X-PAYMENT → 200`. Step 3 hits the same backend as `Try /transfer`, so the same policy + AI Detect path is enforced; the basescan tx hash drops in inline.
+
+Sign in and click **Create Agent** in the workspace to mint your own session-key API key — then paste it into either panel.
+
+**Local reproductions** (after running the Quickstart):
 
 - `cd apps/example && bun run smoke` — exercises all three tiers, AI Detect catching a recipient mismatch, and AI Detect catching an `Ignore all previous instructions…` injection.
 - `cd apps/example && bun run x402` — boots an in-process `/forecast` resource on `:4242` and makes 3 paid calls in a loop. Each call: 402 → session-key transfer → retry with `X-PAYMENT` → 200.
-- Dashboard at `:4000` — HUMAN-tier rows show **Approve** / **Reject** buttons that prompt Privy to sign the owner-override UserOp.
+- Dashboard at `:4000` — HUMAN-tier rows show **Approve** / **Reject** buttons that prompt Privy to sign the owner-override UserOp. The agent panel exposes a **Policy** editor (off-chain limits, whitelist) and an **Emergency Stop** button that sweeps remaining USDC + revokes the agent in a single owner-signed UserOp.
 
 ---
 
@@ -203,7 +212,8 @@ const forecast = await res.json();
 | **M4** — x402 micropayment fast path (`guard.fetch`, session-key auto-settle)          | **On-chain session-key rotation** — re-mint with new policies via UserOp                 |
 | **M5** — Per-row guard source chips (Policy · Agent)                                   | **Timelock escape hatch UI** — `proposeRemoveGuard()` countdown                          |
 | **M5+** — Per-agent policy editor (off-chain limits + on-chain cap at creation)        |                                                                                          |
-| **M5++** — On-chain TimestampPolicy (24h) + RateLimitPolicy (100/window) + Emergency Stop |                                                                                       |
+| **M5++** — On-chain TimestampPolicy (24h, configurable) + RateLimitPolicy (100/window) + owner-signed Emergency Stop (sweep USDC + mark revoked) |                                |
+| **M5 landing** — Interactive `Try /transfer` API explorer + animated `Try guard.fetch (x402)` stepped demo, both fully driven from the public landing page |       |
 
 ---
 

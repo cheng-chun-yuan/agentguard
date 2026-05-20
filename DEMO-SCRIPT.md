@@ -1,14 +1,26 @@
 # AgentGuard — 3-Minute Demo Recording Script
 
-## Production notes
+## Two demo paths
 
-Target duration **3:00** (with a 10s outro card extending to 3:10). Record at **1920×1080 @ 60fps**, browser zoom set so the dashboard `max-w-[1080px]` workspace fills the frame with comfortable margins; terminal at 14–16pt Martian Mono on dark background. Mic check: headset close-talk, push-to-talk off, ambient fans muted, levels peaking at -12 dBFS. Pre-open in this order so window-switching is one keypress: (1) Chrome tab on `https://agentguard.polyoctant.com` already at the Landing page (signed out), (2) iTerm/Ghostty window in `/Users/zeusnetwork/projects/agentguard/apps/example` with `AGENTGUARD_URL=http://localhost:3737` already exported, (3) a second terminal tab in the same dir for the x402 run, (4) Privy popup permissions pre-granted in the browser so popups appear without an extra OS dialog. **API key in clipboard:** after Scene 1 completes on a dry run, copy the `ag_test_...` key from the agent panel — it will be pasted live in Scene 2. Backend (`http://localhost:3737`) and Cloudflare tunnel must be up before recording starts; verify with `curl http://localhost:3737/health` and that the public URL responds.
+This script covers the **recorded 3-minute video** path (terminal + dashboard). For a **live in-person demo** (judging table, sponsor booth) the landing page now ships two interactive panels — `Try /transfer` and `Try guard.fetch (x402)` — that drive the same backend without leaving the browser. The live-demo flow is:
+
+1. Sign in via Privy (~10 s), click **Create Agent**, sign the EIP-7702 popup, copy the `ag_test_…` key.
+2. Scroll down to `Try /transfer`, paste the key in the Bearer field, click preset **2 mismatch** → ▶ Run. Watch the response panel render the HUMAN-tier row + the AI Detect verdict panel on the dashboard.
+3. Scroll to `Try guard.fetch (x402)`, click ▶ Run. The 5 steps animate, step 3 hits `/transfer` for real and the basescan tx hash drops inline.
+
+Total live demo time: **~90 seconds** versus the 3:00 recorded narrative below. Use whichever fits the format.
+
+---
+
+## Production notes (recorded video)
+
+Target duration **3:00** (with a 10s outro card extending to 3:10). Record at **1920×1080 @ 60fps**, browser zoom set so the dashboard `max-w-[1080px]` workspace fills the frame with comfortable margins; terminal at 14–16pt Martian Mono on dark background. Mic check: headset close-talk, push-to-talk off, ambient fans muted, levels peaking at -12 dBFS. Pre-open in this order so window-switching is one keypress: (1) Chrome tab on `https://agentguard-dashboard-seven.vercel.app` already at the Landing page (signed out), (2) iTerm/Ghostty window in `/Users/zeusnetwork/projects/agentguard/apps/example` with `AGENTGUARD_URL=http://localhost:3737` already exported, (3) a second terminal tab in the same dir for the x402 run, (4) Privy popup permissions pre-granted in the browser so popups appear without an extra OS dialog. **API key in clipboard:** after Scene 1 completes on a dry run, copy the `ag_test_...` key from the agent panel — it will be pasted live in Scene 2. Backend (`http://localhost:3737`) and Cloudflare tunnel must be up before recording starts; verify with `curl http://localhost:3737/health` and that the public URL responds.
 
 ---
 
 ### Scene 1 — Onboarding (0:00–0:30, 30 seconds)
 
-**Screen at start:** Browser fullscreen on `https://agentguard.polyoctant.com`, unauthenticated Landing view — amber-accent dot logo top-left, `base-sepolia · v3 / 7702` chain badge, headline "Drop in an API key.", SDK preview pane on the right, three-tier table below.
+**Screen at start:** Browser fullscreen on `https://agentguard-dashboard-seven.vercel.app`, unauthenticated Landing view — amber-accent dot logo top-left, `BASE SEPOLIA` chain pill, headline "Drop in an API key.", SDK preview pane on the right, three-tier table below, `Try /transfer` and `Try guard.fetch (x402)` interactive panels further down.
 
 **Beat 1 (0:00–0:06)**
 - Action: Cursor rests on the headline for one beat; presenter clicks the amber `SIGN IN` button in the top-right.

@@ -211,6 +211,8 @@ Attacker payload slips into the agent's user prompt:
 - Tier escalates to **HUMAN**, on-chain payment never attempted
 - Dashboard row gets a red AI Detect verdict panel — owner sees the diff
 
+*Live on the landing → `Try /transfer` panel · preset `2 mismatch` and `3 injection`.*
+
 <!--
 SLIDE 6, 25 SECONDS.
 The attack: someone slips a prompt-injection payload into the agent's input.
@@ -235,6 +237,8 @@ const data = await res.json()
 - Retries with `X-PAYMENT` header — server returns weather data
 - **3 consecutive calls settle in ~4 s each** on Base Sepolia
 - Per-call cap means even a rogue agent loses at most **$10/day**
+
+*Live on the landing → `Try guard.fetch (x402)` panel · ▶ Run animates all five steps; step 3 is a real on-chain call.*
 
 <!--
 SLIDE 7, 25 SECONDS.
