@@ -45,3 +45,30 @@ export async function fetchAgentsForOwner(
     (a) => a.owner_address.toLowerCase() === ownerAddress.toLowerCase(),
   );
 }
+
+export async function approveApprovalApi(
+  id: string,
+  txHash: string,
+  userOpHash?: string,
+): Promise<void> {
+  const res = await fetch(`${getBackendUrl()}/approvals/${id}/approve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ txHash, userOpHash }),
+  });
+  if (!res.ok)
+    throw new Error(`approve failed (${res.status}): ${await res.text()}`);
+}
+
+export async function rejectApprovalApi(
+  id: string,
+  reason?: string,
+): Promise<void> {
+  const res = await fetch(`${getBackendUrl()}/approvals/${id}/reject`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(reason ? { reason } : {}),
+  });
+  if (!res.ok)
+    throw new Error(`reject failed (${res.status}): ${await res.text()}`);
+}

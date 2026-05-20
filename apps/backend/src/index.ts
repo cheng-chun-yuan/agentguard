@@ -4,6 +4,7 @@ import { env } from "./env";
 import { agentsRoute } from "./routes/agents";
 import { executeRoute } from "./routes/execute";
 import { activityRoute } from "./routes/activity";
+import { approvalsRoute } from "./routes/approvals";
 import { AuthError } from "./middleware/auth";
 
 const app = new Elysia()
@@ -32,6 +33,7 @@ const app = new Elysia()
   .use(agentsRoute)
   .use(executeRoute)
   .use(activityRoute)
+  .use(approvalsRoute)
   .listen(env.PORT);
 
 console.log(
