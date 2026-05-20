@@ -136,9 +136,8 @@ function Divider() {
 // ─────────────────────────────────────────────────────────────────────
 
 function Landing({ onLogin }: { onLogin: () => void }) {
-  // Shared API key state — TryItBox owns the input UI; X402Panel reads
-  // the same key so a judge only enters it once.
-  const [apiKey, setApiKey] = useState("");
+  // Each interactive panel owns its own API key — independent inputs so
+  // judges can A/B different keys per panel (eg. revoked vs fresh).
   return (
     <section className="flex flex-1 flex-col gap-16 px-6 py-20 md:py-28">
       <div className="grid items-center gap-12 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
@@ -179,8 +178,8 @@ function Landing({ onLogin }: { onLogin: () => void }) {
       </div>
 
       <Tiers />
-      <TryItBox apiKey={apiKey} onApiKeyChange={setApiKey} />
-      <X402Panel apiKey={apiKey} />
+      <TryItBox />
+      <X402Panel />
     </section>
   );
 }
@@ -1082,14 +1081,8 @@ function writeField(
   return JSON.stringify(obj, null, 2);
 }
 
-function TryItBox({
-  apiKey,
-  onApiKeyChange,
-}: {
-  apiKey: string;
-  onApiKeyChange: (key: string) => void;
-}) {
-  const setApiKey = onApiKeyChange;
+function TryItBox() {
+  const [apiKey, setApiKey] = useState("");
   const [bodyJson, setBodyJson] = useState(formatBody(SCENARIOS[0]!.body));
   const [active, setActive] =
     useState<TryScenario["key"] | "custom" | null>("aligned");
@@ -1229,10 +1222,7 @@ function TryItBox({
     : "no key";
 
   return (
-    <section
-      id="try-transfer"
-      className="scroll-mt-6 border border-[var(--color-border)] bg-[var(--color-bg-elev)]"
-    >
+    <section className="border border-[var(--color-border)] bg-[var(--color-bg-elev)]">
       {/* ── request line ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg-inset)] px-4 py-3 font-mono">
         <span className="inline-flex items-center bg-[var(--color-accent)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent-ink)]">
@@ -1704,7 +1694,8 @@ const X402_FORECASTS = [
   "Light rain, 61°F",
 ];
 
-function X402Panel({ apiKey }: { apiKey: string }) {
+function X402Panel() {
+  const [apiKey, setApiKey] = useState("");
   const [running, setRunning] = useState(false);
   const [target, setTarget] = useState("https://api.example.com/forecast");
   const [s, setS] = useState<X402State>({
@@ -1728,7 +1719,7 @@ function X402Panel({ apiKey }: { apiKey: string }) {
     if (!apiKey.trim()) {
       setS({
         steps: ["pending", "pending", "pending", "pending", "pending"],
-        error: "paste an API key in the panel above to authenticate",
+        error: "paste an API key to authenticate (Bearer field above)",
       });
       return;
     }
@@ -1840,40 +1831,31 @@ function X402Panel({ apiKey }: { apiKey: string }) {
 
   return (
     <section className="border border-[var(--color-border)] bg-[var(--color-bg-elev)]">
+      {/* ── request line ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg-inset)] px-4 py-3 font-mono">
-        <span className="text-[11px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
-          x402 fast path
+        <span className="inline-flex items-center bg-[var(--color-accent)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent-ink)]">
+          x402
+        </span>
+        <span className="text-[14px] tracking-tight text-[var(--color-fg)]">
+          guard.fetch()
         </span>
         <span className="text-[var(--color-fg-dim)]">·</span>
-        <span className="text-[12px] text-[var(--color-fg-muted)]">
-          agent pays for a paywalled HTTP endpoint
+        <span className="flex flex-1 items-center gap-2 text-[11px] text-[var(--color-fg-muted)]">
+          <span className="text-[var(--color-fg-dim)]">Authorization:</span>
+          <input
+            type="text"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="Bearer ag_test_…"
+            spellCheck={false}
+            className="min-w-0 flex-1 bg-transparent text-[12px] text-[var(--color-fg)] placeholder:text-[var(--color-fg-dim)] focus:outline-none"
+          />
+          {hasKey && (
+            <span className="hidden whitespace-nowrap text-[var(--color-fg-dim)] sm:inline">
+              {maskedKey}
+            </span>
+          )}
         </span>
-        <span className="hidden text-[var(--color-fg-dim)] sm:inline">·</span>
-        <input
-          type="text"
-          value={target}
-          onChange={(e) => setTarget(e.target.value)}
-          spellCheck={false}
-          className="hidden min-w-0 flex-1 bg-transparent font-mono text-[12px] text-[var(--color-fg-muted)] focus:outline-none sm:inline"
-        />
-        {hasKey ? (
-          <span
-            className="inline-flex items-center gap-1.5 border border-[var(--color-ok)] bg-[color-mix(in_oklch,var(--color-ok)_12%,transparent)] px-2 py-0.5 text-[11px] text-[var(--color-ok)]"
-            title="API key shared with Try /transfer panel above"
-          >
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-ok)]" />
-            key {maskedKey}
-          </span>
-        ) : (
-          <a
-            href="#try-transfer"
-            className="inline-flex items-center gap-1.5 border border-[var(--color-pending)] bg-[color-mix(in_oklch,var(--color-pending)_12%,transparent)] px-2 py-0.5 text-[11px] text-[var(--color-pending)] hover:opacity-90"
-            title="Click to scroll to the Try /transfer panel and paste a key"
-          >
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-pending)]" />
-            paste key above ↑
-          </a>
-        )}
         <button
           onClick={run}
           disabled={running}
