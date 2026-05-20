@@ -1,5 +1,18 @@
 import { getBackendUrl } from "./wallet/clients";
 
+export type DetectionVerdict = "safe" | "suspicious" | "hostile";
+
+export type DetectionResultJson = {
+  worst: DetectionVerdict;
+  results: {
+    provider: string;
+    verdict: DetectionVerdict;
+    score: number;
+    reasons: string[];
+    latencyMs: number;
+  }[];
+};
+
 export type TxLogEntry = {
   id: string;
   agent_id: string;
@@ -12,8 +25,21 @@ export type TxLogEntry = {
   user_op_hash: string | null;
   tx_hash: string | null;
   error: string | null;
+  /** JSON-encoded DetectionResultJson, or null if no detection ran. */
+  detection: string | null;
   created_at: number;
 };
+
+export function parseDetection(
+  raw: string | null,
+): DetectionResultJson | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as DetectionResultJson;
+  } catch {
+    return null;
+  }
+}
 
 export async function fetchActivity(agentId: string): Promise<TxLogEntry[]> {
   const res = await fetch(

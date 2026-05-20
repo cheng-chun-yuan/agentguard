@@ -12,6 +12,8 @@ export type LogActivityInput = {
   userOpHash?: string;
   txHash?: string;
   error?: string;
+  /** Detection verdicts serialized as JSON string. */
+  detection?: string;
 };
 
 export function logActivity(input: LogActivityInput): TxLogRow {
@@ -19,8 +21,9 @@ export function logActivity(input: LogActivityInput): TxLogRow {
   const now = Date.now();
   db.prepare(
     `INSERT INTO tx_log (id, agent_id, kind, tier, status, target, token,
-                         amount, user_op_hash, tx_hash, error, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                         amount, user_op_hash, tx_hash, error, detection,
+                         created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.agentId,
@@ -33,6 +36,7 @@ export function logActivity(input: LogActivityInput): TxLogRow {
     input.userOpHash ?? null,
     input.txHash ?? null,
     input.error ?? null,
+    input.detection ?? null,
     now,
   );
   return {
@@ -47,6 +51,7 @@ export function logActivity(input: LogActivityInput): TxLogRow {
     user_op_hash: input.userOpHash ?? null,
     tx_hash: input.txHash ?? null,
     error: input.error ?? null,
+    detection: input.detection ?? null,
     created_at: now,
   };
 }

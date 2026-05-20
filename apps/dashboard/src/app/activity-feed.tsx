@@ -5,7 +5,9 @@ import { useWallets } from "@privy-io/react-auth";
 import {
   approveApprovalApi,
   fetchActivity,
+  parseDetection,
   rejectApprovalApi,
+  type DetectionResultJson,
   type TxLogEntry,
 } from "@/lib/activity";
 import { executeAsOwner } from "@/lib/wallet/owner-execute";
@@ -188,6 +190,7 @@ function ActivityRow({ entry }: { entry: TxLogEntry }) {
   const tierColor = TIER_COLORS[entry.tier];
   const statusColor = STATUS_COLORS[entry.status];
   const isPending = entry.status === "pending_approval";
+  const detection = parseDetection(entry.detection);
 
   return (
     <li
@@ -236,6 +239,10 @@ function ActivityRow({ entry }: { entry: TxLogEntry }) {
           </span>
         )}
 
+        {detection && detection.worst !== "safe" && (
+          <DetectionPanel detection={detection} />
+        )}
+
         {isPending && <ApprovalControls entry={entry} />}
       </div>
 
@@ -259,6 +266,65 @@ function EmptyState() {
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// AI Detect verdict panel — only shown on non-safe rows.
+// ─────────────────────────────────────────────────────────────────────
+
+function DetectionPanel({
+  detection,
+}: {
+  detection: DetectionResultJson;
+}) {
+  const color = VERDICT_COLORS[detection.worst];
+  return (
+    <div className="mt-2 border-t border-[var(--color-border-soft)] pt-2 font-mono text-[11px]">
+      <div className="mb-1 flex items-center gap-2">
+        <span
+          className="text-[10px] font-semibold uppercase tracking-[0.2em]"
+          style={{ color }}
+        >
+          ai detect · {detection.worst}
+        </span>
+        <span className="text-[var(--color-fg-dim)]">
+          {detection.results.length} provider{detection.results.length === 1 ? "" : "s"}
+        </span>
+      </div>
+      <ul className="space-y-1">
+        {detection.results.map((r) => (
+          <li key={r.provider} className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <span
+                className="text-[10px] uppercase tracking-wider"
+                style={{ color: VERDICT_COLORS[r.verdict] }}
+              >
+                {r.verdict}
+              </span>
+              <span className="text-[var(--color-fg-muted)]">{r.provider}</span>
+              <span className="ml-auto text-[var(--color-fg-dim)]">
+                {r.latencyMs}ms
+              </span>
+            </div>
+            {r.reasons.map((reason, i) => (
+              <span
+                key={i}
+                className="break-words pl-3 text-[var(--color-fg-muted)]"
+              >
+                · {reason}
+              </span>
+            ))}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+const VERDICT_COLORS: Record<"safe" | "suspicious" | "hostile", string> = {
+  safe: "var(--color-ok)",
+  suspicious: "var(--color-pending)",
+  hostile: "var(--color-fail)",
+};
 
 // ─────────────────────────────────────────────────────────────────────
 // Tier / status colors — semantic tokens, no rainbow palette here.

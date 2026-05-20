@@ -45,6 +45,8 @@ db.exec(`
     user_op_hash TEXT,
     tx_hash      TEXT,
     error        TEXT,
+    -- JSON blob of detection results from the providers registry.
+    detection    TEXT,
     created_at   INTEGER NOT NULL,
     FOREIGN KEY (agent_id) REFERENCES agents(id)
   );
@@ -52,6 +54,24 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tx_log_agent_id ON tx_log(agent_id);
   CREATE INDEX IF NOT EXISTS idx_tx_log_created_at ON tx_log(created_at DESC);
 `);
+
+// Idempotent migrations for columns added after the initial schema.
+// SQLite ALTER TABLE ADD COLUMN is the only DDL safely callable on a
+// running DB — try/catch swallows the "duplicate column" error on second
+// run.
+const migrations: { name: string; sql: string }[] = [
+  { name: "tx_log.detection", sql: `ALTER TABLE tx_log ADD COLUMN detection TEXT` },
+];
+for (const m of migrations) {
+  try {
+    db.exec(m.sql);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.includes("duplicate column")) {
+      console.warn(`[db] migration "${m.name}" skipped: ${msg}`);
+    }
+  }
+}
 
 export type AgentRow = {
   id: string;
@@ -86,5 +106,6 @@ export type TxLogRow = {
   user_op_hash: string | null;
   tx_hash: string | null;
   error: string | null;
+  detection: string | null;
   created_at: number;
 };

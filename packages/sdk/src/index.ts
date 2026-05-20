@@ -1,6 +1,8 @@
 import {
   AgentGuardError,
   type AgentGuardConfig,
+  type ChatMessage,
+  type IntentContext,
   type TransferOptions,
   type TxResult,
 } from "./types";
@@ -8,6 +10,8 @@ import {
 export {
   AgentGuardError,
   type AgentGuardConfig,
+  type ChatMessage,
+  type IntentContext,
   type TransferOptions,
   type TxResult,
 };

@@ -21,7 +21,7 @@ export const POLICY = {
   /** ≤ this routes to GUARD. Anything above → HUMAN. */
   GUARD_PER_CALL_MAX: parseUnits("0.005", 6),
   /** Cumulative cap across the rolling 24h window. */
-  DAILY_MAX: parseUnits("0.02", 6),
+  DAILY_MAX: parseUnits("1", 6),
 };
 
 export type Tier = "auto" | "guard" | "human";

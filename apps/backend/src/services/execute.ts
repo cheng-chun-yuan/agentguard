@@ -8,7 +8,9 @@ import { sessionClientFor, USDC_ADDRESS } from "./kernel";
 import type { AgentRow } from "../db";
 import { env } from "../env";
 import { logActivity } from "./activity";
-import { evaluatePolicy } from "./policy";
+import { evaluatePolicy, type Tier } from "./policy";
+import { aggregate, runDetectors } from "./detect/registry";
+import type { ChatMessage } from "./detect/types";
 
 // USDC has 6 decimals on Base.
 const TOKEN_REGISTRY: Record<string, { address: Address; decimals: number }> = {
@@ -28,11 +30,18 @@ const ERC20_TRANSFER_ABI = [
   },
 ] as const;
 
+export type IntentContext = {
+  userPrompt?: string;
+  conversationLog?: ChatMessage[];
+};
+
 export type TransferRequest = {
   agent: AgentRow;
   to: Address;
   token: string;
-  amount: string; // human-readable, e.g. "0.001"
+  amount: string;
+  /** Optional upstream context for the AI Detect layer (SPEC §4.3). */
+  intentContext?: IntentContext;
 };
 
 export type ExecuteResult =
@@ -50,13 +59,18 @@ export type ExecuteResult =
       reason: string;
     };
 
-/**
- * Tier-1 execution path: sign + send a UserOp using the Agent's session key.
- *
- * On-chain policy (installed at provisioning) caps single-transfer value;
- * out-of-policy requests revert at the validator stage. Tier 2/3 routing
- * (Guard review + human approval) will be added in M2.
- */
+const TIER_RANK: Record<Tier, number> = { auto: 0, guard: 1, human: 2 };
+
+function maxTier(a: Tier, b: Tier): Tier {
+  return TIER_RANK[a] >= TIER_RANK[b] ? a : b;
+}
+
+function bumpTier(t: Tier, by: 0 | 1 | 2): Tier {
+  const ranks: Tier[] = ["auto", "guard", "human"];
+  const next = Math.min(TIER_RANK[t] + by, 2);
+  return ranks[next]!;
+}
+
 export async function executeTransfer(
   req: TransferRequest,
 ): Promise<ExecuteResult> {
@@ -75,16 +89,52 @@ export async function executeTransfer(
     );
   }
 
-  // ── (1) Off-chain policy evaluation ───────────────────────────────
+  // ── (1) AI Detect — run all providers in parallel against the intent ──
+  const detectorResults = req.intentContext
+    ? await runDetectors({
+        userPrompt: req.intentContext.userPrompt,
+        conversationLog: req.intentContext.conversationLog,
+        proposedAction: {
+          kind: "transfer",
+          to: req.to,
+          token: req.token.toUpperCase(),
+          amount: req.amount,
+        },
+        agentMetadata: {
+          agentId: req.agent.id,
+          name: req.agent.name,
+          chain: req.agent.chain,
+        },
+      })
+    : [];
+  const detectAggregate = aggregate(detectorResults);
+
+  // ── (2) Off-chain policy (amount / recipient / daily) ────────────────
   const policy = evaluatePolicy({
     agent: req.agent,
     to: req.to,
     amountWei,
   });
 
-  // HUMAN tier never reaches the bundler. Log a pending row and return
-  // an approval handle that the dashboard (M2.3) will action.
-  if (policy.tier === "human") {
+  // ── (3) Combine — final tier is max(policy tier, detect-bumped tier) ──
+  const tier: Tier = maxTier(policy.tier, bumpTier("auto", detectAggregate.tierBump));
+  const combinedReasons = [...policy.reasons, ...detectAggregate.reasons];
+  const detectionJson =
+    detectorResults.length > 0
+      ? JSON.stringify({
+          worst: detectAggregate.worst,
+          results: detectorResults.map((r) => ({
+            provider: r.providerName,
+            verdict: r.verdict,
+            score: r.score,
+            reasons: r.reasons,
+            latencyMs: r.latencyMs,
+          })),
+        })
+      : undefined;
+
+  // HUMAN tier never reaches the bundler.
+  if (tier === "human") {
     const entry = logActivity({
       agentId: req.agent.id,
       kind: "transfer",
@@ -93,20 +143,20 @@ export async function executeTransfer(
       target: req.to,
       token: req.token.toUpperCase(),
       amount: req.amount,
-      error: policy.reasons.join("; "),
+      error: combinedReasons.join("; "),
+      detection: detectionJson,
     });
     return {
       status: "pending_approval",
       tier: "human",
       approvalId: entry.id,
       approvalUrl: `${env.DASHBOARD_ORIGIN}/?approval=${entry.id}`,
-      reason: policy.reasons.join("; "),
+      reason: combinedReasons.join("; "),
     };
   }
 
-  // AUTO / GUARD both execute via the session key. GUARD is "logged but
-  // allowed" for now; later we can wire stricter guard behavior in.
-
+  // AUTO / GUARD: execute via the session key. Detection bumped tier is
+  // already merged in. GUARD-tier rows show the detect reasons too.
   try {
     const client = await sessionClientFor({
       permissionAccountBlob: req.agent.permission_account_blob,
@@ -133,27 +183,29 @@ export async function executeTransfer(
     logActivity({
       agentId: req.agent.id,
       kind: "transfer",
-      tier: policy.tier,
+      tier,
       status: "submitted",
       target: req.to,
       token: req.token.toUpperCase(),
       amount: req.amount,
       userOpHash,
       txHash,
+      detection: detectionJson,
     });
 
-    return { status: "submitted", tier: policy.tier, userOpHash, txHash };
+    return { status: "submitted", tier, userOpHash, txHash };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logActivity({
       agentId: req.agent.id,
       kind: "transfer",
-      tier: policy.tier,
+      tier,
       status: "rejected",
       target: req.to,
       token: req.token.toUpperCase(),
       amount: req.amount,
       error: message.slice(0, 500),
+      detection: detectionJson,
     });
     throw err;
   }

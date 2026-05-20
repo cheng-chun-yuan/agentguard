@@ -12,6 +12,7 @@ export const executeRoute = new Elysia().post(
       to: body.to as Address,
       token: body.token,
       amount: body.amount,
+      intentContext: body.intentContext,
     });
   },
   {
@@ -19,6 +20,24 @@ export const executeRoute = new Elysia().post(
       to: t.String({ pattern: "^0x[a-fA-F0-9]{40}$" }),
       token: t.String({ minLength: 1, maxLength: 16 }),
       amount: t.String({ pattern: "^[0-9]+(\\.[0-9]+)?$" }),
+      intentContext: t.Optional(
+        t.Object({
+          userPrompt: t.Optional(t.String({ maxLength: 4000 })),
+          conversationLog: t.Optional(
+            t.Array(
+              t.Object({
+                role: t.Union([
+                  t.Literal("user"),
+                  t.Literal("assistant"),
+                  t.Literal("system"),
+                ]),
+                content: t.String({ maxLength: 4000 }),
+              }),
+              { maxItems: 20 },
+            ),
+          ),
+        }),
+      ),
     }),
   },
 );

@@ -13,4 +13,6 @@ export const env = {
   DEV_OWNER_PRIVATE_KEY: required("DEV_OWNER_PRIVATE_KEY") as Hex,
   DB_PATH: process.env.DB_PATH ?? "./agentguard.db",
   DASHBOARD_ORIGIN: process.env.DASHBOARD_ORIGIN ?? "http://localhost:4000",
+  /** Optional — set to enable the GPT-4o-mini-backed detection providers. */
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
 };
