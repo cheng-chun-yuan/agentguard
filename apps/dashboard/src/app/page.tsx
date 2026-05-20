@@ -145,7 +145,7 @@ function Landing({ onLogin }: { onLogin: () => void }) {
           <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-[var(--color-accent)]">
             secure execution · AI agents
           </span>
-          <h1 className="text-balance font-display text-[48px] font-medium leading-[1.02] tracking-tight md:text-[68px]">
+          <h1 className="text-balance font-display text-[36px] font-medium leading-[1.02] tracking-tight md:text-[56px]">
             The safety layer
             <br />
             <span className="text-[var(--color-fg-muted)]">for AI agents</span>
