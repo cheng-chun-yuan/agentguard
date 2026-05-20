@@ -80,8 +80,6 @@ function TopBar({
         <Logo />
         <Divider />
         <span className="text-[var(--color-fg-muted)]">base-sepolia</span>
-        <span className="text-[var(--color-fg-dim)]">·</span>
-        <span className="text-[var(--color-fg-dim)]">v3 / 7702</span>
       </div>
 
       <div className="flex items-center gap-3 font-mono text-[11px]">
@@ -136,29 +134,29 @@ function Divider() {
 
 function Landing({ onLogin }: { onLogin: () => void }) {
   return (
-    <section className="flex flex-1 flex-col gap-12 px-6 py-16 md:py-24">
-      <div className="grid gap-10 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <div className="flex flex-col gap-6">
-          <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--color-accent)]">
-            secure execution for AI agents
+    <section className="flex flex-1 flex-col gap-16 px-6 py-20 md:py-28">
+      <div className="grid items-center gap-12 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <div className="flex flex-col gap-7">
+          <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-[var(--color-accent)]">
+            secure execution · AI agents
           </span>
-          <h1 className="font-display text-[40px] font-medium leading-[1.05] tracking-tight md:text-[56px]">
-            Drop in an API key. <br />
-            <span className="text-[var(--color-fg-muted)]">Your agent transacts on-chain with</span>{" "}
-            policy, anomaly detection,{" "}
-            <span className="text-[var(--color-fg-muted)]">and</span> one-click escalation.
+          <h1 className="text-balance font-display text-[48px] font-medium leading-[1.02] tracking-tight md:text-[68px]">
+            Drop an API key.
+            <br />
+            <span className="text-[var(--color-fg-muted)]">Your agent transacts</span>
+            <br />
+            on-chain.{" "}
+            <span className="text-[var(--color-accent)]">Safely.</span>
           </h1>
-          <p className="max-w-[55ch] text-[15px] text-[var(--color-fg-muted)]">
-            A non-custodial control plane for autonomous agents.
-            Your wallet stays in your TEE; the backend only holds session
-            keys with on-chain enforced limits.
+          <p className="max-w-[40ch] text-[16px] text-[var(--color-fg-muted)]">
+            Non-custodial. Three-tier policy. AI-aware.
           </p>
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-5">
             <button
               onClick={onLogin}
               className="bg-[var(--color-accent)] px-5 py-2.5 font-mono text-[12px] uppercase tracking-wider text-[var(--color-accent-ink)] transition-opacity hover:opacity-90"
             >
-              sign in to continue
+              sign in
             </button>
             <a
               href="https://github.com/cheng-chun-yuan/agentguard"
@@ -166,7 +164,7 @@ function Landing({ onLogin }: { onLogin: () => void }) {
               rel="noreferrer"
               className="font-mono text-[12px] uppercase tracking-wider text-[var(--color-fg-muted)] underline decoration-dotted underline-offset-4 hover:text-[var(--color-fg)]"
             >
-              source on github →
+              github →
             </a>
           </div>
         </div>
@@ -179,35 +177,95 @@ function Landing({ onLogin }: { onLogin: () => void }) {
   );
 }
 
+// Pre-tokenized SDK example. Each token carries its semantic color so we
+// can both syntax-highlight AND reveal it character-by-character without
+// re-parsing the buffer on every animation frame.
+type CodeTok = { t: string; c?: "dim" | "fg" | "str" };
+
+const SDK_PREVIEW_TOKENS: CodeTok[] = [
+  { t: "import", c: "dim" },
+  { t: " { AgentGuard } " },
+  { t: "from", c: "dim" },
+  { t: " " },
+  { t: `"@agentguard/sdk"`, c: "str" },
+  { t: "\n\n" },
+  { t: "const", c: "dim" },
+  { t: " guard " },
+  { t: "=", c: "dim" },
+  { t: " " },
+  { t: "new", c: "dim" },
+  { t: " AgentGuard({\n  apiKey: process.env.AGENTGUARD_API_KEY,\n})" },
+  { t: "\n\n" },
+  { t: "await", c: "dim" },
+  { t: " guard.transfer({\n  to: " },
+  { t: `"0x…"`, c: "str" },
+  { t: ",\n  token: " },
+  { t: `"USDC"`, c: "str" },
+  { t: ",\n  amount: " },
+  { t: `"0.001"`, c: "str" },
+  { t: ",\n})" },
+];
+
+const SDK_FULL_LEN = SDK_PREVIEW_TOKENS.reduce((n, k) => n + k.t.length, 0);
+
+const TOK_COLOR: Record<NonNullable<CodeTok["c"]>, string> = {
+  dim: "var(--color-fg-dim)",
+  fg: "var(--color-fg)",
+  str: "var(--color-accent)",
+};
+
 function SdkPreview() {
+  const [shown, setShown] = useState(0);
+
+  useEffect(() => {
+    // ~42 chars/sec, slight initial delay so the user notices it start.
+    const start = performance.now() + 250;
+    let raf = 0;
+    const tick = () => {
+      const elapsed = Math.max(0, performance.now() - start);
+      const target = Math.min(Math.floor(elapsed / 24), SDK_FULL_LEN);
+      setShown(target);
+      if (target < SDK_FULL_LEN) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // Walk the token list and emit only as many characters as we should show.
+  const visible: CodeTok[] = [];
+  let budget = shown;
+  for (const tok of SDK_PREVIEW_TOKENS) {
+    if (budget <= 0) break;
+    if (budget >= tok.t.length) {
+      visible.push(tok);
+      budget -= tok.t.length;
+    } else {
+      visible.push({ ...tok, t: tok.t.slice(0, budget) });
+      budget = 0;
+    }
+  }
+  const done = shown >= SDK_FULL_LEN;
+
   return (
     <div className="self-start border border-[var(--color-border)] bg-[var(--color-bg-inset)]">
       <div className="flex items-center justify-between border-b border-[var(--color-border)] px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-[var(--color-fg-dim)]">
         <span>example.ts</span>
         <span>typescript</span>
       </div>
-      <pre className="overflow-x-auto px-4 py-3 font-mono text-[12px] leading-[1.7]">
-        <span className="text-[var(--color-fg-dim)]">import</span>{" "}
-        <span className="text-[var(--color-fg)]">{"{ AgentGuard }"}</span>{" "}
-        <span className="text-[var(--color-fg-dim)]">from</span>{" "}
-        <span className="text-[var(--color-accent)]">{`"@agentguard/sdk"`}</span>
-        {"\n\n"}
-        <span className="text-[var(--color-fg-dim)]">const</span>{" "}
-        <span className="text-[var(--color-fg)]">guard</span>{" "}
-        <span className="text-[var(--color-fg-dim)]">=</span>{" "}
-        <span className="text-[var(--color-fg-dim)]">new</span>{" "}
-        <span className="text-[var(--color-fg)]">AgentGuard</span>({"{"}
-        {"\n  apiKey: process.env.AGENTGUARD_API_KEY,\n}"})
-        {"\n\n"}
-        <span className="text-[var(--color-fg-dim)]">await</span>{" "}
-        <span className="text-[var(--color-fg)]">guard.transfer</span>({"{"}
-        {"\n  to: "}
-        <span className="text-[var(--color-accent)]">{`"0x…"`}</span>,
-        {"\n  token: "}
-        <span className="text-[var(--color-accent)]">{`"USDC"`}</span>,
-        {"\n  amount: "}
-        <span className="text-[var(--color-accent)]">{`"0.001"`}</span>,
-        {"\n}"})
+      <pre className="min-h-[280px] overflow-x-auto whitespace-pre px-4 py-3 font-mono text-[12px] leading-[1.7]">
+        {visible.map((tok, i) => (
+          <span key={i} style={tok.c ? { color: TOK_COLOR[tok.c] } : undefined}>
+            {tok.t}
+          </span>
+        ))}
+        <span
+          aria-hidden
+          className={`ml-0.5 inline-block w-[7px] align-[-1px] text-[var(--color-accent)] ${
+            done ? "pulse-dot" : ""
+          }`}
+        >
+          ▍
+        </span>
       </pre>
     </div>
   );
@@ -652,18 +710,15 @@ function Booting() {
 function Footer() {
   return (
     <footer className="mt-auto flex items-center justify-between border-t border-[var(--color-border)] px-6 py-4 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
-      <span>agentguard / hackathon build</span>
-      <span>
-        opus 4.7 ·{" "}
-        <a
-          href="https://sepolia.basescan.org"
-          target="_blank"
-          rel="noreferrer"
-          className="text-[var(--color-fg-muted)] underline decoration-dotted underline-offset-4 hover:text-[var(--color-accent)]"
-        >
-          base sepolia explorer
-        </a>
-      </span>
+      <span>agentguard</span>
+      <a
+        href="https://github.com/cheng-chun-yuan/agentguard"
+        target="_blank"
+        rel="noreferrer"
+        className="text-[var(--color-fg-muted)] underline decoration-dotted underline-offset-4 hover:text-[var(--color-accent)]"
+      >
+        github
+      </a>
     </footer>
   );
 }
