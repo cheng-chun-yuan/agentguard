@@ -80,7 +80,9 @@ These 5 guards collapse into 3 runtime execution tiers per call: **AUTO** (agent
    │  ZeroDev Kernel v3.3 smart account  (Base Sepolia, EIP-7702) │
    │   V1  Owner (Privy embedded wallet)   — escape hatch         │
    │   V2  Agent session key               — bounded · 24h        │
-   │   V3  Guard session key (backend)     — bounded · 24h        │
+   │       (per-call ≤ 0.01 USDC, 100 calls / 24h, auto-expire)   │
+   │       Covers AUTO + GUARD tiers; off-chain policy decides    │
+   │       which tier label. V3 (separate cap for GUARD) = roadmap│
    └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -91,9 +93,12 @@ These 5 guards collapse into 3 runtime execution tiers per call: **AUTO** (agent
 ```
  Tier    Trigger                                     Signer              Latency
  ────    ───────────────────────────────────────     ─────────────────   ────────
- AUTO    micropayment, on-chain caps cover it        Agent session key   < 1 s
- GUARD   off-chain policy clean + AI Guard safe     Guard session key   ~1 s
+ AUTO    micropayment, on-chain caps cover it        V2 session key      < 1 s
+ GUARD   off-chain policy clean + AI Guard safe      V2 session key      ~1 s
  HUMAN   over-limit · off-whitelist · suspicious     Owner via Privy     async
+
+ AUTO + GUARD share the V2 session key (off-chain policy chooses
+ the label). HUMAN is the only path that uses the owner key.
 ```
 
 ---

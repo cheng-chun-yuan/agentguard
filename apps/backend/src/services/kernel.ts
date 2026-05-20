@@ -1,14 +1,25 @@
 /**
  * Wallet stack helpers — wraps ZeroDev SDK with AgentGuard's policy defaults.
  *
- * Owner model (hackathon): single shared DEV_OWNER_PRIVATE_KEY signs the init
- * UserOp for every Agent. In production this becomes per-developer Privy
- * server wallets — see SPEC §3.2.
+ * Owner model:
+ *   - Dashboard path (production-shape): each developer's Privy embedded
+ *     wallet signs their own 7702 auth + init UserOp client-side via
+ *     `apps/dashboard/src/lib/wallet/provision.ts`. Backend never touches
+ *     the owner key.
+ *   - Headless path (this file, used by `apps/example` smoke + `POST
+ *     /agents/`): a single shared `DEV_OWNER_PRIVATE_KEY` signs the init
+ *     UserOp. Useful for E2E smoke tests; not exposed to end users.
  *
- * Session key model: each Agent gets one bounded session key with a call
- * policy restricting it to ERC-20 transfers on a whitelist with a value cap.
- * Guard session key (a second bounded key with a higher cap) is a follow-up
- * milestone; for now Tier 2 actions go through the dev owner instead.
+ * Session key model: each Agent gets one bounded V2 session key with a
+ * call policy restricting it to ERC-20 USDC transfers ≤ 0.01 USDC per
+ * call, 100 calls / 24h, auto-expiring after 24h. This single key serves
+ * BOTH AUTO and GUARD tiers — off-chain policy decides the tier label,
+ * the on-chain cap is identical for both. HUMAN tier escalates to the
+ * owner key and never touches the session key.
+ *
+ * V3 (a second, separately-capped session key dedicated to GUARD tier
+ * for stronger separation-of-duties) is post-hackathon roadmap. See
+ * SPEC §3.3 "Roadmap" row.
  */
 
 import {

@@ -157,8 +157,9 @@ and the defaults are safe.
                   ▼
    Kernel v3.3 smart account · Base Sepolia
      V1 Owner (Privy TEE, EIP-7702)  ─────── ⑤ Human Approve
-     V2 Agent session key (bounded, 24h) ┐
-     V3 Guard session key (bounded, 24h) ┴── ② On-chain Guard
+     V2 Agent session key (bounded, 24h)  ── ② On-chain Guard
+        ↳ per-call ≤ 0.01 USDC · 100 calls / 24h · auto-expire
+        ↳ covers AUTO + GUARD tiers; HUMAN escalates to V1
 ```
 
 Owner key **never** leaves Privy's TEE. Backend never sees it.
@@ -167,12 +168,13 @@ Owner key **never** leaves Privy's TEE. Backend never sees it.
 SLIDE 4, 30 SECONDS.
 Here's where those five layers physically live. The SDK at the top —
 that's the single API. Inside the backend, the policy engine is the
-off-chain guard, AI detect is the AI guard. Below the bundler, the smart
-account has three validators: the owner key — that's how Human Approve
-signs — and two session keys, which is what makes the on-chain guard
-EVM-enforced. Privy for identity, EIP-7702 to upgrade the EOA in place,
-ZeroDev Kernel for the validator modules. The next five slides are just
-zoom-ins on each numbered box.
+off-chain guard, AI guard catches the agent-specific threats. Below the
+bundler, the smart account has two validators: the owner key, used only
+for HUMAN-tier approvals through Privy — and the V2 session key, which
+covers both AUTO and GUARD tiers with on-chain caps the EVM enforces.
+Privy for identity, EIP-7702 to upgrade the EOA in place, ZeroDev Kernel
+for the validator modules. The next five slides zoom in on each
+numbered box.
 -->
 
 ---

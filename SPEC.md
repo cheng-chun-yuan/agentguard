@@ -84,7 +84,7 @@ const result = await guard.transfer({
             ▼                           ▼
    ┌─────────────────┐    ┌─────────────────────────────┐
    │ Tier 1: Auto    │    │ Tier 2: Guard reviews        │
-   │ Agent key signs │    │ • Whitelist                  │
+   │ V2 session key  │    │ • Whitelist                  │
    │ x402 / micro    │    │ • Policy Engine              │
    │ < 200 ms        │    │ • AI Guard (advisory)       │
    └─────────────────┘    └────────────┬────────────────┘
@@ -92,11 +92,15 @@ const result = await guard.transfer({
                        ┌───────────────┘            │
                        ▼                            ▼
               ┌─────────────────┐    ┌─────────────────────────┐
-              │ Guard key signs │    │ Tier 3: Human approval  │
+              │ V2 session key  │    │ Tier 3: Human approval  │
               │ ~1 s            │    │ • Push to dashboard     │
               └─────────────────┘    │ • 5 min timeout         │
                                      │ • Owner signs via Privy │
                                      └─────────────────────────┘
+   Both Tier 1 + Tier 2 share the same V2 session key — off-chain
+   policy decides which tier, on-chain cap (0.01 USDC per call)
+   is identical for both. V3 (separate, smaller cap for AUTO) is a
+   post-hackathon separation-of-duties enhancement.
 ```
 
 ### 2.3 Dashboard surface
@@ -145,7 +149,7 @@ const result = await guard.transfer({
    │  └────────────────────────────────────────────────────┘    │
    │             ▼                                              │
    │  ┌────────────────────────────────────────────────────┐    │
-   │  │ Signer (Guard session key, HSM-equivalent)         │    │
+   │  │ Signer (Agent session key V2 — bounded validator)  │    │
    │  └──────────┬─────────────────────────────────────────┘    │
    └─────────────│──────────────────────────────────────────────┘
                  │ signed UserOperation
@@ -160,7 +164,8 @@ const result = await guard.transfer({
    │                                                            │
    │  Validator 1: Owner (Privy embedded wallet)  ◄─ escape    │
    │  Validator 2: Agent Session Key (bounded)                  │
-   │  Validator 3: Guard Session Key (bounded)                  │
+   │                                                            │
+   │  V3 (separate cap-tiered Guard session key) = roadmap      │
    └────────────────────────────────────────────────────────────┘
 ```
 
@@ -183,22 +188,28 @@ const result = await guard.transfer({
 - 純 7702 沒有 UserOp / bundler 生態，session key 模型還沒標準化
 - 4337 的 modular validator 才能做受限授權
 
-### 3.3 The three validators
+### 3.3 The validators
+
+**Shipped (hackathon):**
 
 | Validator | Holder | Purpose | Permissions |
 |---|---|---|---|
-| **V1 — Owner** | Developer (Privy embedded wallet) | Ultimate authority + escape hatch | 無限制；也是 timelock 撤銷其他 validator 的發起者 |
-| **V2 — Agent Session Key** | Agent runtime (env / keychain / TEE) | 自動化微交易 | `target ∈ {x402 endpoints, 預設白名單}`, `value < $1`, `daily < $10`, expiry 24h |
-| **V3 — Guard Session Key** | AgentGuard 後端 | 代簽中等規模交易 | `target ∈ {Uniswap, Aave, USDC, ...}`, `value < $1000`, `daily < $5000`, expiry 24h，可由 V1 隨時撤銷 |
+| **V1 — Owner** | Developer (Privy embedded wallet) | Ultimate authority + escape hatch | 無限制；HUMAN-tier 升級時透過 Privy popup 簽字 |
+| **V2 — Agent Session Key** | Backend (serialized permission account blob) | 自動化轉帳 + x402 微支付 | `target = USDC`, `value ≤ 0.01 USDC` per call, `100 calls / 24h`, expiry 24h. 同一把 key 同時服務 AUTO + GUARD tier（off-chain policy 決定標籤），on-chain cap 是硬上限 |
 
-### 3.4 Timelock escape hatch
+**Roadmap (post-hackathon):**
 
-如果 AgentGuard 服務掛掉、Guard 被入侵、或開發者想退出，**Validator 1 隨時可以發起 `proposeRemoveGuard()`**：
+| Validator | Holder | Purpose | Permissions |
+|---|---|---|---|
+| **V3 — Guard Session Key** | Backend (separate signer) | 把 GUARD-tier 切到比 V2 更高的 cap，做 separation-of-duties | `target = USDC`, `value ≤ 0.005 USDC` per call (vs V2 ≤ 0.001)，受獨立 RateLimit + Timestamp policy 約束 |
 
-- 提案後 **72 小時等待期**
-- 等待期內 Guard 仍可阻擋新交易（防止攻擊者搶在 timelock 結束前洗錢）
-- 72 小時後，Validator 1 單方執行 `executeRemoveGuard()`，移除 V3
-- V2（Agent key）的撤銷不需要 timelock，Owner 可即時撤銷
+V3 不是「功能缺失」而是「安全增強」：V2 的 on-chain cap 已經把 AUTO + GUARD 都包住了；獨立 V3 只是讓 V2 私鑰泄漏的 blast radius 從 GUARD cap 縮到 AUTO cap。
+
+### 3.4 Revocation paths
+
+- **V2 (Agent session key) 撤銷** — Owner 透過 dashboard 簽一筆 UserOp，立即生效；同時 `TimestampPolicy` 24h 後自動讓 key 失效，rate-limit policy 也是硬上限
+- **Emergency Stop（已 ship）** — Owner 一鍵把 smart account 殘餘 USDC 全部掃回 Owner address 並把 agent 標記 `revoked`，~5s 上鏈，之後 `/transfer` 一律 403
+- **V3 timelock escape hatch（roadmap）** — V3 上線後，會跟 V2 同樣有立即撤銷路徑；timelock 機制保留給未來的 multi-tenant Guard service 場景
 
 這個機制保證 AgentGuard **永遠無法綁架用戶資金**——服務只是「政策執行者」，不是「資產保管者」。
 
@@ -241,7 +252,7 @@ permissions = {
 
 每一條檢查都會輸出 `pass / warn / block`：
 
-- 全 pass → Guard key (V3) 簽名
+- 全 pass → V2 session key 簽名（標記為 GUARD tier）
 - 任一 warn → 升級到 Tier 3（人類審核）
 - 任一 block → 直接拒絕，回 SDK `{ status: 'rejected', reason: '...' }`
 
@@ -349,8 +360,8 @@ Anomaly any amount  →  Tier 3, Human approval
 |---|---|
 | Agent 收到 prompt injection 後送出惡意 UserOp | Session key 鏈上限額 + Policy whitelist + AI Guard 升級到人類 |
 | Agent runtime 環境被入侵，session key 外洩 | 損失 ≤ session key 限額；Owner 可即時撤銷 |
-| Guard 後端被入侵 | Guard key 也有鏈上限額（V3 policy）；用戶可走 timelock 撤掉 V3 |
-| Guard 串通攻擊者試圖盜款 | Guard 沒有 Owner 權限；最多在 V3 限額內亂簽，timelock 後可被撤銷 |
+| Backend 被入侵（持有 V2 session key blob） | V2 也是 bounded validator：per-call ≤ 0.01 USDC、100 calls / 24h、24h 自動過期。攻擊者最多偷 1 USDC 然後 key 自己失效。Owner 也可立即撤銷 |
+| Backend 串通攻擊者試圖盜款 | Backend 沒有 Owner 權限；最多在 V2 限額內亂簽，Owner 可即時撤銷或 Emergency Stop 掃空帳戶 |
 | 中間人篡改 UserOp 內容 | UserOp 是簽過的，篡改即失效 |
 
 ### 5.2 Out of scope (delegated to upstream)
@@ -413,51 +424,49 @@ Anomaly any amount  →  Tier 3, Human approval
 
 The demo is **one continuous developer journey**: sign up on web → configure policy → generate API key → paste into Agent code → run → watch dashboard catch things. Milestones are ordered to build that spine first, then layer features on.
 
-### M1 — End-to-end onboarding spine (Day 1–2)
-**Goal**: A developer can go from `agentguard.io` to a working transaction in under 2 minutes.
-- [ ] Landing page → Privy signup → dashboard
-- [ ] Dashboard "Create Agent" wizard: name, chain, default policy template
-- [ ] Backend: API key issuance + SQLite `agents` / `api_keys` tables
-- [ ] Backend provisions: Privy server wallet + 7702 → Kernel v3 + mints Agent session key + Guard session key
-- [ ] SDK skeleton: `new AgentGuard({ apiKey })`, `.transfer()` works
-- [ ] Pimlico bundler + paymaster wired up
-- ✅ **Success**: from a fresh browser, complete onboarding → paste key into demo script → see tx hash on Base in dashboard activity feed
+### M1 — End-to-end onboarding spine ✅ Shipped
+- [x] Landing page → Privy signup → dashboard
+- [x] Dashboard "Create Agent" wizard: name, on-chain cap, expiry, rate-limit
+- [x] Backend: API key issuance + SQLite `agents` / `api_keys` tables
+- [x] Dashboard provisions client-side: Privy embedded wallet signs 7702 auth → Kernel v3.3 installs V2 session key. Backend deserializes the permission account blob and stores it
+- [x] SDK: `new AgentGuard({ apiKey })`, `.transfer()`, `.fetch()` all work
+- [x] ZeroDev v3 bundler + paymaster wired up (gas sponsored)
 
-### M2 — Policy editor + escalation flow (Day 3–4)
-**Goal**: Dashboard shows the "guard" doing its job.
-- [ ] Policy editor UI: whitelist, per-tx limit, daily limit, slippage cap
-- [ ] Policy Engine in backend: whitelist + limit tracker + slippage check
-- [ ] Activity feed with tier labels (`Auto` / `Guard` / `Human`)
-- [ ] Approval queue with WebSocket push + Approve / Reject buttons
-- [ ] Owner signs approval via Privy embedded wallet (V1)
-- [ ] SDK returns `{ status: 'pending_approval', approvalUrl }` for escalated tx
-- ✅ **Success**: configure a $100 limit, demo Agent tries $500 transfer → dashboard shows pending card → click Approve → tx executes
+### M2 — Policy editor + escalation flow ✅ Shipped
+- [x] Policy editor UI: whitelist, per-call cap, daily limit, requireWhitelist
+- [x] Off-chain policy engine: whitelist + limit tracker + first-time-recipient bump
+- [x] Activity feed with tier labels (`AUTO` / `GUARD` / `HUMAN`) + per-row source chip
+- [x] Approval queue (poll-based, 3s) with Approve / Reject buttons
+- [x] Owner signs approval via Privy embedded wallet (V1 sudo)
+- [x] SDK returns `{ status: 'pending_approval', approvalUrl }` for escalated tx
 
-### M3 — AI Guard + prompt injection scene (Day 5)
-**Goal**: The wow moment that differentiates AgentGuard from CDP / Crossmint.
-- [ ] Intent extraction with GPT-4o-mini (structured JSON output)
-- [ ] Intent vs UserOp diff logic
-- [ ] Injection signature scanner (regex + LLM classifier)
-- [ ] Dashboard view that shows the diff visually (red highlights on mismatch)
-- [ ] Demo Agent reads a malicious "user message" and tries to drain → caught
-- ✅ **Success**: dashboard shows red banner with `intent_mismatch + injection_signature` flags, diff visible side-by-side
+### M3 — AI Guard + prompt injection scene ✅ Shipped
+- [x] Intent extraction with GPT-4o-mini (structured JSON output)
+- [x] Intent vs UserOp diff logic — `agentguard/intent-diff` provider
+- [x] Injection signature scanner — `agentguard/injection-signature` provider (regex + LLM classifier)
+- [x] Dashboard `AI Guard verdict` panel per flagged row, with provider list + matched patterns
+- [x] Demo Agent reads malicious "user message" and tries to drain → caught + escalated to HUMAN
 
-### M4 — x402 micropayment fast path (Day 6)
-**Goal**: Show the Tier 1 path is genuinely fast and frictionless.
-- [ ] `guard.fetch()` x402-aware middleware
-- [ ] Mock x402 endpoint (weather API, $0.01 USDC per call)
-- [ ] Demo Agent makes 20 calls in a loop, all auto-signed by Agent session key
-- [ ] Dashboard activity feed updates in real-time
-- ✅ **Success**: 20 sub-second micropayments stream into the feed, zero approvals, total cost < $0.30 gas
+### M4 — x402 micropayment fast path ✅ Shipped
+- [x] `guard.fetch()` x402-aware middleware
+- [x] In-process `/forecast` x402 endpoint demo (`apps/example/src/x402-demo.ts`)
+- [x] Demo Agent makes 3 calls in a loop, all auto-signed by V2 session key (avg ~4s incl. on-chain settlement)
+- [x] Dashboard activity feed updates within one poll tick
 
-### M5 — Polish + provider marketplace surface + demo recording (Day 7)
-- [ ] Onboarding wizard polish (it's the first thing judges see)
-- [ ] Empty states, loading states, error toasts
-- [ ] **Dashboard `Providers` tab**: built-in two providers shown as `Active`; premium providers (Lakera Guard, Protect AI, Robust Intelligence, Rebuff, Promptfoo) shown as `Disabled / Connect` cards with logos. Frame visibly as "Coming soon."
-- [ ] **Pitch deck "Provider Marketplace — Roadmap" slide**: logo wall with the same 5 providers. Disclaimer: *"Logos are property of their respective owners. Roadmap targets only; integrations not yet committed."*
-- [ ] Demo script timed + rehearsed (target 3:00)
-- [ ] Backup video in case live demo fails
-- [ ] Pitch deck (10 slides max)
+### M5 — Polish + landing surface + demo recording ✅ Shipped
+- [x] Landing page rewritten as "The safety layer for AI agents that spend money"
+- [x] Interactive `Try /transfer` Swagger-style explorer with `aligned · mismatch · injection` presets
+- [x] Interactive `Try guard.fetch (x402)` 5-step animated stepper
+- [x] Dashboard `Providers` tab: built-in providers `Active`; premium (Lakera Guard, Protect AI, Robust Intelligence, Rebuff, Promptfoo) shown as `Disabled / Connect`
+- [x] Pitch deck (10 slides, "Provider Marketplace — Roadmap" slide included)
+- [x] Demo script timed + rehearsed (3:00 recorded + 1:30 live + 30s booth flows)
+- [x] Emergency Stop button (owner sweeps remaining USDC + revokes agent)
+
+### Post-hackathon roadmap
+- [ ] **V3 separation-of-duties session key** — split V2 into a lower-cap AUTO key + a higher-cap GUARD key, so V2 leak only loses AUTO-cap worth
+- [ ] **MPP (Stripe / Tempo) streaming micropayments** — session-key model already shaped right; ~half-day MVP
+- [ ] **Multi-chain** — Arbitrum, Optimism, then Base mainnet
+- [ ] **Premium AI Guard providers** — Lakera first, then Protect AI, Rebuff, Promptfoo
 
 ---
 
@@ -547,4 +556,4 @@ class AgentGuard {
 
 ---
 
-*Last updated: 2026-05-20*
+*Last updated: 2026-05-21*
