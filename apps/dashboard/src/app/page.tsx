@@ -1229,7 +1229,10 @@ function TryItBox({
     : "no key";
 
   return (
-    <section className="border border-[var(--color-border)] bg-[var(--color-bg-elev)]">
+    <section
+      id="try-transfer"
+      className="scroll-mt-6 border border-[var(--color-border)] bg-[var(--color-bg-elev)]"
+    >
       {/* ── request line ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg-inset)] px-4 py-3 font-mono">
         <span className="inline-flex items-center bg-[var(--color-accent)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent-ink)]">
@@ -1830,6 +1833,11 @@ function X402Panel({ apiKey }: { apiKey: string }) {
     setRunning(false);
   }
 
+  const hasKey = apiKey.trim().length > 0;
+  const maskedKey = hasKey
+    ? `${apiKey.slice(0, 9)}…${apiKey.slice(-4)}`
+    : "";
+
   return (
     <section className="border border-[var(--color-border)] bg-[var(--color-bg-elev)]">
       <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg-inset)] px-4 py-3 font-mono">
@@ -1848,6 +1856,24 @@ function X402Panel({ apiKey }: { apiKey: string }) {
           spellCheck={false}
           className="hidden min-w-0 flex-1 bg-transparent font-mono text-[12px] text-[var(--color-fg-muted)] focus:outline-none sm:inline"
         />
+        {hasKey ? (
+          <span
+            className="inline-flex items-center gap-1.5 border border-[var(--color-ok)] bg-[color-mix(in_oklch,var(--color-ok)_12%,transparent)] px-2 py-0.5 text-[11px] text-[var(--color-ok)]"
+            title="API key shared with Try /transfer panel above"
+          >
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-ok)]" />
+            key {maskedKey}
+          </span>
+        ) : (
+          <a
+            href="#try-transfer"
+            className="inline-flex items-center gap-1.5 border border-[var(--color-pending)] bg-[color-mix(in_oklch,var(--color-pending)_12%,transparent)] px-2 py-0.5 text-[11px] text-[var(--color-pending)] hover:opacity-90"
+            title="Click to scroll to the Try /transfer panel and paste a key"
+          >
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-pending)]" />
+            paste key above ↑
+          </a>
+        )}
         <button
           onClick={run}
           disabled={running}
