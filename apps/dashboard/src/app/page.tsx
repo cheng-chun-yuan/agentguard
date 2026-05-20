@@ -136,6 +136,9 @@ function Divider() {
 // ─────────────────────────────────────────────────────────────────────
 
 function Landing({ onLogin }: { onLogin: () => void }) {
+  // Shared API key state — TryItBox owns the input UI; X402Panel reads
+  // the same key so a judge only enters it once.
+  const [apiKey, setApiKey] = useState("");
   return (
     <section className="flex flex-1 flex-col gap-16 px-6 py-20 md:py-28">
       <div className="grid items-center gap-12 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
@@ -176,7 +179,8 @@ function Landing({ onLogin }: { onLogin: () => void }) {
       </div>
 
       <Tiers />
-      <TryItBox />
+      <TryItBox apiKey={apiKey} onApiKeyChange={setApiKey} />
+      <X402Panel apiKey={apiKey} />
     </section>
   );
 }
@@ -1078,8 +1082,14 @@ function writeField(
   return JSON.stringify(obj, null, 2);
 }
 
-function TryItBox() {
-  const [apiKey, setApiKey] = useState("");
+function TryItBox({
+  apiKey,
+  onApiKeyChange,
+}: {
+  apiKey: string;
+  onApiKeyChange: (key: string) => void;
+}) {
+  const setApiKey = onApiKeyChange;
   const [bodyJson, setBodyJson] = useState(formatBody(SCENARIOS[0]!.body));
   const [active, setActive] =
     useState<TryScenario["key"] | "custom" | null>("aligned");
@@ -1667,4 +1677,397 @@ function HistoryStrip({
       </ul>
     </div>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// X402Panel — animated stepped demo of guard.fetch()
+// ─────────────────────────────────────────────────────────────────────
+
+type X402StepStatus = "pending" | "active" | "done" | "error";
+
+type X402State = {
+  steps: X402StepStatus[];
+  payTier?: "auto" | "guard" | "human";
+  payStatus?: "submitted" | "pending_approval";
+  payTxHash?: string;
+  payReason?: string;
+  forecast?: string;
+  error?: string;
+};
+
+const X402_FORECASTS = [
+  "Sunny, 72°F",
+  "Partly cloudy, 68°F",
+  "Light rain, 61°F",
+];
+
+function X402Panel({ apiKey }: { apiKey: string }) {
+  const [running, setRunning] = useState(false);
+  const [target, setTarget] = useState("https://api.example.com/forecast");
+  const [s, setS] = useState<X402State>({
+    steps: ["pending", "pending", "pending", "pending", "pending"],
+  });
+
+  function reset() {
+    setS({ steps: ["pending", "pending", "pending", "pending", "pending"] });
+  }
+
+  function patchStep(i: number, next: X402StepStatus) {
+    setS((cur) => {
+      const steps = cur.steps.slice();
+      steps[i] = next;
+      return { ...cur, steps };
+    });
+  }
+
+  async function run() {
+    if (running) return;
+    if (!apiKey.trim()) {
+      setS({
+        steps: ["pending", "pending", "pending", "pending", "pending"],
+        error: "paste an API key in the panel above to authenticate",
+      });
+      return;
+    }
+    setRunning(true);
+    reset();
+
+    // Step 1 — GET the paywalled endpoint
+    await new Promise((r) => setTimeout(r, 200));
+    patchStep(0, "active");
+    await new Promise((r) => setTimeout(r, 400));
+    patchStep(0, "done");
+
+    // Step 2 — Server returns 402
+    patchStep(1, "active");
+    await new Promise((r) => setTimeout(r, 600));
+    patchStep(1, "done");
+
+    // Step 3 — Real /transfer call (the actual on-chain settlement)
+    patchStep(2, "active");
+    try {
+      const res = await fetch(`${getBackendUrl()}/transfer`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey.trim()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: "0x000000000000000000000000000000000000c0fe",
+          token: "USDC",
+          amount: "0.001",
+        }),
+      });
+      const text = await res.text();
+      let body: unknown;
+      try {
+        body = text ? JSON.parse(text) : undefined;
+      } catch {
+        /* leave undefined */
+      }
+      if (!res.ok) {
+        const errMsg =
+          body && typeof body === "object" && body !== null && "error" in body
+            ? String((body as { error: unknown }).error)
+            : text || res.statusText;
+        setS((cur) => ({
+          ...cur,
+          steps: cur.steps.map((st, i) =>
+            i === 2 ? "error" : st,
+          ) as X402StepStatus[],
+          error: `${res.status}: ${errMsg}`,
+        }));
+        setRunning(false);
+        return;
+      }
+      const result = body as {
+        status: "submitted" | "pending_approval";
+        tier: "auto" | "guard" | "human";
+        txHash?: string;
+        reason?: string;
+      };
+      patchStep(2, "done");
+      setS((cur) => ({
+        ...cur,
+        payTier: result.tier,
+        payStatus: result.status,
+        payTxHash: result.txHash,
+        payReason: result.reason,
+      }));
+      if (result.status !== "submitted") {
+        setS((cur) => ({
+          ...cur,
+          steps: cur.steps.map((st, i) =>
+            i >= 3 ? "error" : st,
+          ) as X402StepStatus[],
+          error: `payment escalated to ${result.tier.toUpperCase()} — retry would fail. (cap reached or policy flagged it)`,
+        }));
+        setRunning(false);
+        return;
+      }
+    } catch (err) {
+      patchStep(2, "error");
+      setS((cur) => ({
+        ...cur,
+        error: err instanceof Error ? err.message : String(err),
+      }));
+      setRunning(false);
+      return;
+    }
+
+    // Step 4 — Retry with X-PAYMENT
+    patchStep(3, "active");
+    await new Promise((r) => setTimeout(r, 500));
+    patchStep(3, "done");
+
+    // Step 5 — 200 OK with forecast data
+    patchStep(4, "active");
+    await new Promise((r) => setTimeout(r, 500));
+    const forecast =
+      X402_FORECASTS[Math.floor(Math.random() * X402_FORECASTS.length)]!;
+    patchStep(4, "done");
+    setS((cur) => ({ ...cur, forecast }));
+    setRunning(false);
+  }
+
+  return (
+    <section className="border border-[var(--color-border)] bg-[var(--color-bg-elev)]">
+      <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg-inset)] px-4 py-3 font-mono">
+        <span className="text-[11px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
+          x402 fast path
+        </span>
+        <span className="text-[var(--color-fg-dim)]">·</span>
+        <span className="text-[12px] text-[var(--color-fg-muted)]">
+          agent pays for a paywalled HTTP endpoint
+        </span>
+        <span className="hidden text-[var(--color-fg-dim)] sm:inline">·</span>
+        <input
+          type="text"
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+          spellCheck={false}
+          className="hidden min-w-0 flex-1 bg-transparent font-mono text-[12px] text-[var(--color-fg-muted)] focus:outline-none sm:inline"
+        />
+        <button
+          onClick={run}
+          disabled={running}
+          className="flex items-center gap-2 bg-[var(--color-accent)] px-4 py-1.5 font-mono text-[11px] uppercase tracking-wider text-[var(--color-accent-ink)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {running ? (
+            <>
+              <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-accent-ink)]" />
+              running
+            </>
+          ) : (
+            "▶ run"
+          )}
+        </button>
+      </div>
+
+      <ol className="flex flex-col">
+        <X402Step
+          status={s.steps[0]!}
+          arrow="→"
+          method="GET"
+          methodColor="var(--color-fg-muted)"
+          line={target}
+        />
+        <X402Step
+          status={s.steps[1]!}
+          arrow="←"
+          method="402"
+          methodColor="var(--color-pending)"
+          line="Payment Required"
+          body={`{
+  "x402Version": 1,
+  "accepts": [{
+    "scheme": "settled",
+    "payTo": "0x…c0fe",
+    "maxAmountRequired": "1000",
+    "asset": "USDC"
+  }]
+}`}
+        />
+        <X402Step
+          status={s.steps[2]!}
+          arrow="→"
+          method="POST"
+          methodColor="var(--color-accent)"
+          line="/transfer  (session key signs · paymaster pays gas)"
+          chips={
+            s.payTier ? (
+              <>
+                <Pill color={tierToColor(s.payTier)}>{s.payTier}</Pill>
+                {s.payStatus && (
+                  <span className="text-[var(--color-fg-muted)]">
+                    {s.payStatus}
+                  </span>
+                )}
+                {s.payTxHash && (
+                  <a
+                    href={`https://sepolia.basescan.org/tx/${s.payTxHash}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="truncate text-[var(--color-fg)] underline decoration-dotted underline-offset-4 hover:text-[var(--color-accent)]"
+                  >
+                    ↗ {s.payTxHash.slice(0, 10)}…
+                  </a>
+                )}
+              </>
+            ) : null
+          }
+        />
+        <X402Step
+          status={s.steps[3]!}
+          arrow="→"
+          method="GET"
+          methodColor="var(--color-fg-muted)"
+          line={target}
+          body={
+            s.payTxHash
+              ? `X-PAYMENT: ${btoa(
+                  JSON.stringify({
+                    x402Version: 1,
+                    scheme: "settled",
+                    payload: { txHash: s.payTxHash, asset: "USDC" },
+                  }),
+                ).slice(0, 64)}…`
+              : 'X-PAYMENT: base64({ txHash, asset, value })'
+          }
+        />
+        <X402Step
+          status={s.steps[4]!}
+          arrow="←"
+          method="200"
+          methodColor="var(--color-ok)"
+          line="OK"
+          body={
+            s.forecast
+              ? `{ "forecast": "${s.forecast}", "paidWith": "${s.payTxHash ?? "0x…"}" }`
+              : `{ "forecast": "…", "paidWith": "0x…" }`
+          }
+          isLast
+        />
+      </ol>
+
+      {s.error && (
+        <div className="border-t border-[var(--color-fail-soft)] bg-[var(--color-bg-inset)] px-4 py-2 font-mono text-[11px] text-[var(--color-fail)]">
+          <span className="block text-[10px] uppercase tracking-[0.2em]">
+            failed
+          </span>
+          <span className="mt-1 block break-words text-[var(--color-fg-muted)]">
+            {s.error}
+          </span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function X402Step({
+  status,
+  arrow,
+  method,
+  methodColor,
+  line,
+  body,
+  chips,
+  isLast,
+}: {
+  status: X402StepStatus;
+  arrow: "→" | "←";
+  method: string;
+  methodColor: string;
+  line: string;
+  body?: string;
+  chips?: React.ReactNode;
+  isLast?: boolean;
+}) {
+  const dotColor =
+    status === "done"
+      ? "var(--color-ok)"
+      : status === "active"
+        ? "var(--color-accent)"
+        : status === "error"
+          ? "var(--color-fail)"
+          : "var(--color-fg-dim)";
+  const isActive = status === "active";
+
+  return (
+    <li
+      className={`grid grid-cols-[24px_minmax(0,1fr)] gap-3 px-4 py-3 ${
+        isLast ? "" : "border-b border-[var(--color-border-soft)]"
+      }`}
+    >
+      <div className="flex flex-col items-center">
+        <span
+          className={`mt-1 inline-block h-2.5 w-2.5 rounded-full ${isActive ? "pulse-dot" : ""}`}
+          style={{
+            background: status === "pending" ? "transparent" : dotColor,
+            border: `1px solid ${dotColor}`,
+          }}
+        />
+        {!isLast && (
+          <span className="mt-1 flex-1 w-px bg-[var(--color-border-soft)]" />
+        )}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex flex-wrap items-center gap-2 font-mono text-[12px]">
+          <span className="text-[var(--color-fg-dim)]">{arrow}</span>
+          <span
+            className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+            style={{ color: methodColor, border: `1px solid ${methodColor}` }}
+          >
+            {method}
+          </span>
+          <span
+            className={`min-w-0 ${
+              status === "pending" ? "text-[var(--color-fg-dim)]" : "text-[var(--color-fg)]"
+            }`}
+          >
+            {line}
+          </span>
+        </div>
+        {chips && (
+          <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
+            {chips}
+          </div>
+        )}
+        {body && (
+          <pre
+            className={`overflow-x-auto whitespace-pre border bg-[var(--color-bg-inset)] px-3 py-1.5 font-mono text-[11px] leading-[1.55] ${
+              status === "pending"
+                ? "border-[var(--color-border-soft)] text-[var(--color-fg-dim)]"
+                : "border-[var(--color-border)] text-[var(--color-fg-muted)]"
+            }`}
+          >
+            {body}
+          </pre>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function Pill({
+  color,
+  children,
+}: {
+  color: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+      style={{ color, border: `1px solid ${color}` }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function tierToColor(t: "auto" | "guard" | "human"): string {
+  if (t === "human") return "var(--color-pending)";
+  if (t === "guard") return "var(--color-accent)";
+  return "var(--color-ok)";
 }
