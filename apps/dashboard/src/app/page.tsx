@@ -1039,6 +1039,45 @@ function formatBody(b: TransferBody | unknown): string {
   return JSON.stringify(b, null, 2);
 }
 
+/** Pull a quick-edit field out of the raw JSON body. Returns "" if the
+ *  JSON doesn't parse or the field is missing — the quick-edit input
+ *  silently disables in that state (the user can still edit the JSON
+ *  directly to fix it). */
+function readField(bodyJson: string, path: "prompt" | "to" | "amount"): string {
+  try {
+    const obj = JSON.parse(bodyJson) as TransferBody;
+    if (path === "prompt") return obj.intentContext?.userPrompt ?? "";
+    if (path === "to") return obj.to ?? "";
+    return obj.amount ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/** Update one field in the raw JSON body. Round-trips through JSON.parse
+ *  so the result is always re-formatted. If the body is unparseable the
+ *  edit is dropped (the JSON editor is the source of truth). */
+function writeField(
+  bodyJson: string,
+  path: "prompt" | "to" | "amount",
+  value: string,
+): string {
+  let obj: TransferBody;
+  try {
+    obj = JSON.parse(bodyJson) as TransferBody;
+  } catch {
+    return bodyJson;
+  }
+  if (path === "prompt") {
+    obj.intentContext = { ...(obj.intentContext ?? { userPrompt: "" }), userPrompt: value };
+  } else if (path === "to") {
+    obj.to = value;
+  } else {
+    obj.amount = value;
+  }
+  return JSON.stringify(obj, null, 2);
+}
+
 function TryItBox() {
   const [apiKey, setApiKey] = useState("");
   const [bodyJson, setBodyJson] = useState(formatBody(SCENARIOS[0]!.body));
@@ -1252,6 +1291,16 @@ function TryItBox() {
             )}
           </div>
 
+          {/* quick edits — easy entry points into the JSON body */}
+          <QuickEdit
+            bodyJson={bodyJson}
+            onChange={(next) => {
+              setBodyJson(next);
+              setActive("custom");
+            }}
+            onSubmit={() => run()}
+          />
+
           {/* body editor */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
@@ -1271,11 +1320,11 @@ function TryItBox() {
               }}
               onKeyDown={onBodyKeyDown}
               spellCheck={false}
-              rows={12}
+              rows={10}
               className="resize-y border border-[var(--color-border)] bg-[var(--color-bg-inset)] px-3 py-2 font-mono text-[12px] leading-[1.55] text-[var(--color-fg)] focus:border-[var(--color-accent)] focus:outline-none"
             />
             <span className="font-mono text-[10px] text-[var(--color-fg-dim)]">
-              ⌘↵ to run · edit JSON freely · scenarios reset the editor
+              ⌘↵ to run · edit JSON or the quick fields above — they stay in sync
             </span>
           </div>
         </div>
@@ -1357,6 +1406,79 @@ function ScenarioStrip({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// ─── quick edits — friendly form bound to the JSON body ───────────
+
+function QuickEdit({
+  bodyJson,
+  onChange,
+  onSubmit,
+}: {
+  bodyJson: string;
+  onChange: (nextBody: string) => void;
+  onSubmit: () => void;
+}) {
+  const prompt = readField(bodyJson, "prompt");
+  const recipient = readField(bodyJson, "to");
+  const amount = readField(bodyJson, "amount");
+
+  function handlePromptKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      onSubmit();
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
+        user prompt · plain text
+      </span>
+      <textarea
+        value={prompt}
+        onChange={(e) => onChange(writeField(bodyJson, "prompt", e.target.value))}
+        onKeyDown={handlePromptKeyDown}
+        rows={2}
+        spellCheck={false}
+        placeholder="type any user input here — AI Detect runs against it"
+        className="resize-y border border-[var(--color-border)] bg-[var(--color-bg-inset)] px-3 py-2 font-mono text-[12px] leading-[1.55] text-[var(--color-fg)] placeholder:text-[var(--color-fg-dim)] focus:border-[var(--color-accent)] focus:outline-none"
+      />
+
+      <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-3">
+        <label className="flex flex-col gap-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
+            recipient
+          </span>
+          <input
+            type="text"
+            value={recipient}
+            onChange={(e) => onChange(writeField(bodyJson, "to", e.target.value))}
+            spellCheck={false}
+            placeholder="0x..."
+            className="border border-[var(--color-border)] bg-[var(--color-bg-inset)] px-3 py-1.5 font-mono text-[12px] text-[var(--color-fg)] placeholder:text-[var(--color-fg-dim)] focus:border-[var(--color-accent)] focus:outline-none"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
+            amount
+          </span>
+          <div className="flex items-center gap-2 border border-[var(--color-border)] bg-[var(--color-bg-inset)] px-3 py-1.5">
+            <input
+              type="text"
+              value={amount}
+              onChange={(e) => onChange(writeField(bodyJson, "amount", e.target.value))}
+              inputMode="decimal"
+              className="flex-1 bg-transparent font-mono text-[12px] text-[var(--color-fg)] focus:outline-none"
+            />
+            <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-fg-dim)]">
+              USDC
+            </span>
+          </div>
+        </label>
+      </div>
     </div>
   );
 }
