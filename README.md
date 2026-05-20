@@ -37,9 +37,12 @@ Every transfer routes to one of three tiers based on policy + detection: **AUTO*
 
 - **One-API-key SDK** — `new AgentGuard({ apiKey }).transfer(...)` and `.fetch(url)` (with HTTP 402 / x402 support) — Stripe-style ergonomics on top of full ERC-4337 + EIP-7702 plumbing.
 - **EIP-7702 + Kernel v3.3 smart account** — the user's Privy EOA *becomes* the smart account at the same address; gas sponsored by ZeroDev paymaster.
-- **Three-tier execution router** — every call is AUTO / GUARD / HUMAN. Same SDK signature, the result type narrows on `status`.
+- **Three-tier execution router** — every call is AUTO / GUARD / HUMAN. Same SDK signature, the result type narrows on `status`. Per-row `Policy` / `Agent` source chips show which guard layer fired.
 - **Pluggable AI Detect** — `DetectionProvider` interface; two built-in providers ship today; premium integrations (Lakera Guard, Protect AI, Rebuff) are wired as a marketplace.
-- **Live activity feed** — dashboard polls every 3 s and shows per-row tier, recipient, tx hash to basescan, and (on flagged rows) the full AI Detect verdict panel.
+- **Per-agent policy editor** — soft limits (auto / guard / daily caps, whitelist, requireWhitelist) are dashboard-editable and hot-applied to the next `/transfer` call. Hard limit (on-chain Kernel cap) is set at Create Agent time.
+- **On-chain defense in depth** — every session key ships with three Kernel validator policies: per-call cap, 24h `TimestampPolicy` (user-configurable), and `RateLimitPolicy` (100 calls / window). Even if the session privkey leaks, the validator caps the blast radius.
+- **Emergency Stop** — owner-only button that sweeps remaining USDC out of the smart account and marks the agent revoked. One Privy popup, on-chain in ~5 s. After revoke, every `/transfer` returns 403.
+- **Live activity feed** — dashboard polls every 3 s and shows per-row tier, source chip, recipient, tx hash to basescan, and (on flagged rows) the full AI Detect verdict panel.
 - **Owner-path approval** — pending HUMAN rows have Approve / Reject buttons in the dashboard; Approve pops Privy to sign the override UserOp.
 - **x402 micropayment fast path** — `guard.fetch()` transparently handles HTTP 402 challenges, settles on-chain via the agent session key, retries with `X-PAYMENT`. ~4 s per cycle on Base Sepolia.
 - **Non-custodial by design** — backend never sees the owner private key; the smart account is recoverable through Privy if the backend disappears.
@@ -197,7 +200,10 @@ const forecast = await res.json();
 | **M2** — off-chain policy engine · three-tier routing · live activity feed             | **Multi-chain** — Arbitrum, Optimism, OP mainnet                                         |
 | **M2.3** — approval queue + owner-signed execute via Privy embedded wallet             | **AI Detect provider marketplace** — Lakera Guard, Protect AI, Rebuff, Promptfoo         |
 | **M3** — pluggable AI Detect (intent-diff + injection-signature, GPT-4o-mini)          | **Mainnet** — Base mainnet, audited validator path, production paymaster                 |
-| **M4** — x402 micropayment fast path (`guard.fetch`, session-key auto-settle)          | **Timelock escape hatch UI** — `proposeRemoveGuard()` countdown                          |
+| **M4** — x402 micropayment fast path (`guard.fetch`, session-key auto-settle)          | **On-chain session-key rotation** — re-mint with new policies via UserOp                 |
+| **M5** — Per-row guard source chips (Policy · Agent)                                   | **Timelock escape hatch UI** — `proposeRemoveGuard()` countdown                          |
+| **M5+** — Per-agent policy editor (off-chain limits + on-chain cap at creation)        |                                                                                          |
+| **M5++** — On-chain TimestampPolicy (24h) + RateLimitPolicy (100/window) + Emergency Stop |                                                                                       |
 
 ---
 
