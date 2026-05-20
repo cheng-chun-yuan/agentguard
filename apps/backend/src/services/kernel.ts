@@ -26,6 +26,8 @@ import {
 import { toECDSASigner } from "@zerodev/permissions/signers";
 import {
   toCallPolicy,
+  toRateLimitPolicy,
+  toTimestampPolicy,
   CallPolicyVersion,
   ParamCondition,
 } from "@zerodev/permissions/policies";
@@ -144,11 +146,23 @@ export async function provisionAgent(): Promise<ProvisionResult> {
     ],
   });
 
+  // Match the dashboard's session policies: TimestampPolicy (24h) gives
+  // automatic expiry even if backend never revokes; RateLimitPolicy caps
+  // calls per window even if a leaked key bypasses our backend.
+  const SESSION_VALIDITY_SECONDS = 24 * 60 * 60;
+  const agentTimestampPolicy = toTimestampPolicy({
+    validUntil: Math.floor(Date.now() / 1000) + SESSION_VALIDITY_SECONDS,
+  });
+  const agentRateLimitPolicy = toRateLimitPolicy({
+    interval: SESSION_VALIDITY_SECONDS,
+    count: 100,
+  });
+
   const agentPermissionValidator = await toPermissionValidator(publicClient, {
     entryPoint,
     kernelVersion,
     signer: agentSessionSigner,
-    policies: [agentCallPolicy],
+    policies: [agentCallPolicy, agentTimestampPolicy, agentRateLimitPolicy],
   });
 
   // ── Kernel account with both validators ──

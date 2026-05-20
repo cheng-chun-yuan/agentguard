@@ -10,6 +10,7 @@ import {
   provisionAgent,
   type ProvisionedAgent,
 } from "@/lib/wallet/provision";
+import { revokeAgent, type RevokeResult } from "@/lib/wallet/revoke";
 import { fetchAgentsForOwner, type AgentListEntry } from "@/lib/activity";
 import { ActivityFeed } from "./activity-feed";
 import { PolicyPanel } from "./policy-panel";
@@ -387,6 +388,7 @@ function Workspace({
         ) : existing ? (
           <ExistingAgentPanel
             agent={existing}
+            embeddedWallet={embeddedWallet}
             onCreateAnother={() => setExisting(null)}
           />
         ) : (
@@ -411,18 +413,27 @@ function Workspace({
 
 function ExistingAgentPanel({
   agent,
+  embeddedWallet,
   onCreateAnother,
 }: {
   agent: AgentListEntry;
+  embeddedWallet: EmbeddedWallet | null;
   onCreateAnother: () => void;
 }) {
+  const revoked = agent.status === "revoked";
   return (
     <Panel
-      label="agent · active"
+      label={revoked ? "agent · revoked" : "agent · active"}
       rightSlot={
-        <span className="font-mono text-[10px] text-[var(--color-ok)]">
-          resumed
-        </span>
+        revoked ? (
+          <span className="font-mono text-[10px] text-[var(--color-fail)]">
+            stopped
+          </span>
+        ) : (
+          <span className="font-mono text-[10px] text-[var(--color-ok)]">
+            resumed
+          </span>
+        )
       }
     >
       <div className="flex flex-col gap-4">
@@ -447,18 +458,124 @@ function ExistingAgentPanel({
         </div>
 
         <p className="font-mono text-[11px] text-[var(--color-fg-dim)]">
-          your api key is not stored in the browser. if you lost it,
-          provision a fresh agent below.
+          {revoked
+            ? "this agent has been emergency-stopped. its session key on-chain will continue to expire on the validator's clock; the smart account was swept on revoke."
+            : "your api key is not stored in the browser. if you lost it, provision a fresh agent below."}
         </p>
 
-        <button
-          onClick={onCreateAnother}
-          className="self-start border border-[var(--color-border)] px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-[var(--color-fg-muted)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-fg)]"
-        >
-          + new agent
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={onCreateAnother}
+            className="border border-[var(--color-border)] px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-[var(--color-fg-muted)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-fg)]"
+          >
+            + new agent
+          </button>
+          {!revoked && (
+            <EmergencyStopButton
+              agentId={agent.id}
+              smartAccountAddress={agent.smart_account_address as Address}
+              embeddedWallet={embeddedWallet}
+            />
+          )}
+        </div>
       </div>
     </Panel>
+  );
+}
+
+function EmergencyStopButton({
+  agentId,
+  smartAccountAddress,
+  embeddedWallet,
+}: {
+  agentId: string;
+  smartAccountAddress: Address;
+  embeddedWallet: EmbeddedWallet | null;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<RevokeResult | null>(null);
+
+  async function onConfirm() {
+    if (!embeddedWallet) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const provider =
+        (await embeddedWallet.getEthereumProvider()) as EIP1193Provider;
+      const r = await revokeAgent({
+        agentId,
+        ownerProvider: provider,
+        ownerAddress: embeddedWallet.address as Address,
+        smartAccountAddress,
+      });
+      setResult(r);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (result) {
+    return (
+      <div className="w-full border border-[var(--color-fail-soft)] bg-[var(--color-bg-inset)] px-3 py-2 font-mono text-[11px]">
+        <div className="text-[var(--color-fail)]">
+          emergency stop confirmed
+        </div>
+        <div className="mt-1 text-[var(--color-fg-muted)]">
+          {result.swept
+            ? `swept ${result.amountUsdc} USDC → owner · `
+            : "no balance to sweep · "}
+          backend revoked
+        </div>
+      </div>
+    );
+  }
+
+  if (!confirming) {
+    return (
+      <button
+        onClick={() => setConfirming(true)}
+        className="border border-[var(--color-fail-soft)] px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-[var(--color-fail)] hover:border-[var(--color-fail)] hover:bg-[color-mix(in_oklch,var(--color-fail)_8%,transparent)]"
+      >
+        🚨 emergency stop
+      </button>
+    );
+  }
+
+  return (
+    <div className="w-full border border-[var(--color-fail-soft)] bg-[var(--color-bg-inset)] px-3 py-2 font-mono text-[11px]">
+      <div className="text-[var(--color-fail)]">
+        confirm: sweep all USDC + revoke agent?
+      </div>
+      <div className="mt-1 text-[var(--color-fg-muted)]">
+        owner signs one Privy popup → transfers everything in the smart account
+        back to your wallet → backend rejects future SDK calls.
+      </div>
+      {error && (
+        <div className="mt-2 break-words text-[var(--color-fail)]">
+          {error}
+        </div>
+      )}
+      <div className="mt-2 flex gap-2">
+        <button
+          onClick={onConfirm}
+          disabled={busy || !embeddedWallet}
+          className="bg-[var(--color-fail)] px-3 py-1 uppercase tracking-wider text-white hover:opacity-90 disabled:opacity-50"
+        >
+          {busy ? "signing…" : "confirm sweep + revoke"}
+        </button>
+        <button
+          onClick={() => setConfirming(false)}
+          disabled={busy}
+          className="border border-[var(--color-border)] px-3 py-1 uppercase tracking-wider text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] disabled:opacity-50"
+        >
+          cancel
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -527,6 +644,8 @@ function CreateAgentPanel({
 }) {
   const [name, setName] = useState("my-agent");
   const [onChainCap, setOnChainCap] = useState("0.01");
+  const [expiryHours, setExpiryHours] = useState("24");
+  const [rateLimit, setRateLimit] = useState("100");
   const [status, setStatus] = useState<
     "idle" | "provisioning" | "error"
   >("idle");
@@ -549,6 +668,11 @@ function CreateAgentPanel({
         const padded = (fracPart + "000000").slice(0, 6);
         capAtomic = BigInt(intPart + padded);
       }
+      const expirySec = Math.max(
+        60,
+        Math.floor(Number(expiryHours || "24") * 3600),
+      );
+      const rate = Math.max(1, Math.floor(Number(rateLimit || "100")));
       const result = await provisionAgent({
         name,
         ownerProvider: provider,
@@ -556,6 +680,8 @@ function CreateAgentPanel({
         signAuthorization: (params) =>
           signAuthorization(params) as Promise<SignAuthorizationReturnType>,
         onChainCapAtomic: capAtomic,
+        expirySeconds: expirySec,
+        rateLimitCount: rate,
       });
       onProvisioned(result);
       setStatus("idle");
@@ -682,6 +808,49 @@ function CreateAgentPanel({
             edited later without rotating the session key.
           </span>
         </label>
+
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
+              session expires in
+            </span>
+            <div className="flex items-center gap-2 border border-[var(--color-border)] bg-[var(--color-bg-inset)] px-3 py-2">
+              <input
+                type="text"
+                value={expiryHours}
+                onChange={(e) => setExpiryHours(e.target.value)}
+                disabled={status === "provisioning"}
+                inputMode="numeric"
+                className="flex-1 bg-transparent font-mono text-[13px] text-[var(--color-fg)] focus:outline-none disabled:opacity-50"
+              />
+              <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-fg-dim)]">
+                hours
+              </span>
+            </div>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
+              max calls / window
+            </span>
+            <div className="flex items-center gap-2 border border-[var(--color-border)] bg-[var(--color-bg-inset)] px-3 py-2">
+              <input
+                type="text"
+                value={rateLimit}
+                onChange={(e) => setRateLimit(e.target.value)}
+                disabled={status === "provisioning"}
+                inputMode="numeric"
+                className="flex-1 bg-transparent font-mono text-[13px] text-[var(--color-fg)] focus:outline-none disabled:opacity-50"
+              />
+              <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-fg-dim)]">
+                calls
+              </span>
+            </div>
+          </label>
+        </div>
+        <span className="-mt-1 font-mono text-[10px] text-[var(--color-fg-dim)]">
+          On-chain throttle: Kernel validator rejects calls after expiry, or beyond
+          the rate-limit count within the window — even if the privkey leaks.
+        </span>
 
         <button
           onClick={handleCreate}

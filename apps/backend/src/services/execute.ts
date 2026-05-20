@@ -83,6 +83,12 @@ export async function executeTransfer(
 
   const amountWei = parseUnits(req.amount, token.decimals);
 
+  if (req.agent.status === "revoked") {
+    throw new Error(
+      `Agent ${req.agent.id} has been revoked (emergency stop). Provision a new agent to continue.`,
+    );
+  }
+
   if (!req.agent.permission_account_blob) {
     throw new Error(
       `Agent ${req.agent.id} has no permission_account_blob — was provisioned before the M1.4.x migration. Recreate it via the dashboard.`,

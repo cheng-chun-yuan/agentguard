@@ -89,7 +89,7 @@ export type AgentRow = {
   agent_session_privkey: string;
   permission_account_blob: string | null;
   init_tx_hash: string | null;
-  status: "provisioning" | "active" | "failed";
+  status: "provisioning" | "active" | "failed" | "revoked";
   /** JSON-encoded soft policy. NULL means use defaults. */
   policy_json: string | null;
   /** USDC atomic units (6 decimals) — the on-chain validator cap.

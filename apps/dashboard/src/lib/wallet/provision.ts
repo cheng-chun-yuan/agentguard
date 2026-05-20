@@ -38,6 +38,8 @@ import {
 import { toECDSASigner } from "@zerodev/permissions/signers";
 import {
   toCallPolicy,
+  toRateLimitPolicy,
+  toTimestampPolicy,
   CallPolicyVersion,
   ParamCondition,
 } from "@zerodev/permissions/policies";
@@ -93,6 +95,14 @@ export type ProvisionInput = {
    *  Kernel permission validator; changing it later requires rotating the
    *  session key. */
   onChainCapAtomic?: bigint;
+  /** Session validity (seconds from now). Default 24h. The Kernel validator
+   *  rejects any UserOp signed by the session key after this timestamp,
+   *  even if the privkey leaks. */
+  expirySeconds?: number;
+  /** Max number of signed UserOps per `expirySeconds` window. Default 100.
+   *  Even if a leaked key bypasses the backend, the Kernel validator
+   *  rejects calls above this on-chain rate limit. */
+  rateLimitCount?: number;
 };
 
 export type ProvisionedAgent = {
@@ -155,11 +165,26 @@ export async function provisionAgent(
     ],
   });
 
+  // Auto-expiry: validator rejects any UserOp signed after this timestamp,
+  // even if the privkey leaks. User-configurable; default 24h.
+  const expirySeconds = input.expirySeconds ?? 24 * 60 * 60;
+  const timestampPolicy = toTimestampPolicy({
+    validUntil: Math.floor(Date.now() / 1000) + expirySeconds,
+  });
+
+  // On-chain throttle over the validity window: even if a leaked key
+  // bypasses the backend's daily cap by hitting the bundler directly,
+  // the Kernel validator caps total calls. Default 100/24h.
+  const rateLimitPolicy = toRateLimitPolicy({
+    interval: expirySeconds,
+    count: input.rateLimitCount ?? 100,
+  });
+
   const agentPermissionValidator = await toPermissionValidator(publicClient, {
     entryPoint,
     kernelVersion,
     signer: agentSessionSigner,
-    policies: [callPolicy],
+    policies: [callPolicy, timestampPolicy, rateLimitPolicy],
   });
 
   // ── (3) Pre-sign 7702 authorization via Privy ──
