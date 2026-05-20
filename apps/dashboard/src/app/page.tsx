@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   usePrivy,
   useWallets,
@@ -10,6 +10,7 @@ import {
   provisionAgent,
   type ProvisionedAgent,
 } from "@/lib/wallet/provision";
+import { fetchAgentsForOwner, type AgentListEntry } from "@/lib/activity";
 import { ActivityFeed } from "./activity-feed";
 import type { EIP1193Provider, Address } from "viem";
 import type { SignAuthorizationReturnType } from "viem/accounts";
@@ -272,6 +273,30 @@ function Workspace({
   embeddedWallet: EmbeddedWallet | null;
 }) {
   const [provisioned, setProvisioned] = useState<ProvisionedAgent | null>(null);
+  const [existing, setExisting] = useState<AgentListEntry | null>(null);
+
+  // On mount (and when the wallet changes), fetch any agent the backend
+  // already holds for this owner. Lets the dashboard resume across reloads
+  // without re-provisioning — only the API key is unrecoverable, since
+  // we deliberately do not persist it client-side.
+  useEffect(() => {
+    if (!embeddedWallet?.address) return;
+    let alive = true;
+    fetchAgentsForOwner(embeddedWallet.address)
+      .then((agents) => {
+        if (!alive) return;
+        const newest = agents[0] ?? null;
+        setExisting(newest);
+      })
+      .catch(() => {
+        /* ignore — empty state will show */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [embeddedWallet?.address]);
+
+  const activeAgentId = provisioned?.id ?? existing?.id ?? null;
 
   return (
     <section className="flex flex-1 flex-col gap-8 px-6 py-10">
@@ -294,19 +319,85 @@ function Workspace({
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <OwnerPanel walletAddress={embeddedWallet?.address ?? null} />
-        <CreateAgentPanel
-          embeddedWallet={embeddedWallet}
-          onProvisioned={setProvisioned}
-          provisioned={provisioned}
-        />
+        {provisioned ? (
+          <CreateAgentPanel
+            embeddedWallet={embeddedWallet}
+            onProvisioned={setProvisioned}
+            provisioned={provisioned}
+          />
+        ) : existing ? (
+          <ExistingAgentPanel
+            agent={existing}
+            onCreateAnother={() => setExisting(null)}
+          />
+        ) : (
+          <CreateAgentPanel
+            embeddedWallet={embeddedWallet}
+            onProvisioned={setProvisioned}
+            provisioned={null}
+          />
+        )}
       </div>
 
-      {provisioned ? (
-        <ActivityFeed agentId={provisioned.id} />
+      {activeAgentId ? (
+        <ActivityFeed agentId={activeAgentId} />
       ) : (
         <ActivityPlaceholder />
       )}
     </section>
+  );
+}
+
+function ExistingAgentPanel({
+  agent,
+  onCreateAnother,
+}: {
+  agent: AgentListEntry;
+  onCreateAnother: () => void;
+}) {
+  return (
+    <Panel
+      label="agent · active"
+      rightSlot={
+        <span className="font-mono text-[10px] text-[var(--color-ok)]">
+          resumed
+        </span>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-[80px_minmax(0,1fr)] gap-x-4 gap-y-3 text-[12px]">
+          <Label>name</Label>
+          <span className="font-mono text-[var(--color-fg)]">{agent.name}</span>
+
+          <Label>account</Label>
+          <a
+            href={`https://sepolia.basescan.org/address/${agent.smart_account_address}`}
+            target="_blank"
+            rel="noreferrer"
+            className="break-all font-mono text-[11px] text-[var(--color-fg)] underline decoration-dotted underline-offset-4 hover:text-[var(--color-accent)]"
+          >
+            {agent.smart_account_address}
+          </a>
+
+          <Label>session</Label>
+          <span className="break-all font-mono text-[11px] text-[var(--color-fg-muted)]">
+            {agent.agent_session_pubkey}
+          </span>
+        </div>
+
+        <p className="font-mono text-[11px] text-[var(--color-fg-dim)]">
+          your api key is not stored in the browser. if you lost it,
+          provision a fresh agent below.
+        </p>
+
+        <button
+          onClick={onCreateAnother}
+          className="self-start border border-[var(--color-border)] px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-[var(--color-fg-muted)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-fg)]"
+        >
+          + new agent
+        </button>
+      </div>
+    </Panel>
   );
 }
 
