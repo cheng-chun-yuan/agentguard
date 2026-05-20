@@ -40,7 +40,7 @@ export type TransferRequest = {
   to: Address;
   token: string;
   amount: string;
-  /** Optional upstream context for the AI Detect layer (SPEC §4.3). */
+  /** Optional upstream context for the AI Guard layer (SPEC §4.3). */
   intentContext?: IntentContext;
 };
 
@@ -95,7 +95,7 @@ export async function executeTransfer(
     );
   }
 
-  // ── (1) AI Detect — run all providers in parallel against the intent ──
+  // ── (1) AI Guard — run all providers in parallel against the intent ──
   const detectorResults = req.intentContext
     ? await runDetectors({
         userPrompt: req.intentContext.userPrompt,

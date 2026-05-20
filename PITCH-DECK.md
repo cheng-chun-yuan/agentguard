@@ -85,7 +85,7 @@ style: |
 ## Stripe for AI Agents.
 
 Drop in an API key. Your agent transacts on-chain safely.
-**Non-custodial · three-tier policy · AI-aware**
+**Non-custodial · 5 configurable guards · AI-aware**
 
 `github.com/cheng-chun-yuan/agentguard`
 
@@ -148,7 +148,7 @@ and the defaults are safe.
         ▼  @agentguard/sdk  ──────────────── ① Single API
    Backend
         ├──▶  Policy Engine  ─────────────── ③ Off-chain Guard
-        ├──▶  AI Detect  ─────────────────── ④ AI Guard
+        ├──▶  AI Guard  ──────────────────── ④ AI Guard
         └──▶  Tier Router
                   │
                   ▼

@@ -146,15 +146,14 @@ function Landing({ onLogin }: { onLogin: () => void }) {
             secure execution · AI agents
           </span>
           <h1 className="text-balance font-display text-[48px] font-medium leading-[1.02] tracking-tight md:text-[68px]">
-            Drop an API key.
+            The safety layer
             <br />
-            <span className="text-[var(--color-fg-muted)]">Your agent transacts</span>
+            <span className="text-[var(--color-fg-muted)]">for AI agents</span>
             <br />
-            on-chain.{" "}
-            <span className="text-[var(--color-accent)]">Safely.</span>
+            that <span className="text-[var(--color-accent)]">spend money.</span>
           </h1>
           <p className="max-w-[40ch] text-[16px] text-[var(--color-fg-muted)]">
-            Non-custodial. Three-tier policy. AI-aware.
+            Non-custodial. 5 configurable guards. AI-aware.
           </p>
           <div className="flex flex-wrap items-center gap-5">
             <button
@@ -303,7 +302,7 @@ function Tiers() {
   return (
     <div className="border border-[var(--color-border)]">
       <div className="border-b border-[var(--color-border)] bg-[var(--color-bg-inset)] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
-        three-tier execution
+        5 guards → 3 execution tiers
       </div>
       <ul className="divide-y divide-[var(--color-border)]">
         {rows.map((r) => (
@@ -1446,7 +1445,7 @@ function QuickEdit({
         onKeyDown={handlePromptKeyDown}
         rows={2}
         spellCheck={false}
-        placeholder="type any user input here — AI Detect runs against it"
+        placeholder="type any user input here — AI Guard runs against it"
         className="resize-y border border-[var(--color-border)] bg-[var(--color-bg-inset)] px-3 py-2 font-mono text-[12px] leading-[1.55] text-[var(--color-fg)] placeholder:text-[var(--color-fg-dim)] focus:border-[var(--color-accent)] focus:outline-none"
       />
 
@@ -1495,7 +1494,7 @@ function ResponseEmpty() {
       <p className="text-[var(--color-fg-muted)]">
         press <kbd className="border border-[var(--color-border)] px-1">▶ run</kbd>{" "}
         (or <kbd className="border border-[var(--color-border)] px-1">⌘↵</kbd>) to
-        POST this body. The tier verdict + AI Detect breakdown appears here.
+        POST this body. The tier verdict + AI Guard breakdown appears here.
       </p>
     </div>
   );

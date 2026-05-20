@@ -12,7 +12,7 @@ export type ChatMessage = {
 };
 
 /**
- * Upstream context passed into the AI Detect layer (SPEC §4.3).
+ * Upstream context passed into the AI Guard layer (SPEC §4.3).
  *
  * Provide either a `userPrompt` (the literal user request the Agent
  * acted on), a `conversationLog` (most recent N turns), or both. When
@@ -32,7 +32,7 @@ export type TransferOptions = {
   token: "USDC";
   /** Human-readable amount, e.g. "0.001". */
   amount: string;
-  /** Optional upstream context for AI Detect. */
+  /** Optional upstream context for AI Guard. */
   intentContext?: IntentContext;
 };
 

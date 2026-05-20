@@ -62,7 +62,7 @@ export class AgentGuard {
    * `fetch` with HTTP 402 support — the agent transparently pays for any
    * resource that advertises x402 payment requirements, then retries with
    * the `X-PAYMENT` header. Micropayments stay within the session-key
-   * cap so the AI Detect / policy escalation paths are not triggered.
+   * cap so the AI Guard / policy escalation paths are not triggered.
    *
    * Hard rule: if the resource asks for *more* than what the agent's
    * session key is permitted to spend, the underlying transfer falls

@@ -89,7 +89,7 @@ export function ActivityFeed({ agentId }: { agentId: string }) {
       <div className="hidden grid-cols-[110px_70px_120px_90px_minmax(0,1fr)_120px] gap-3 border-b border-[var(--color-border-soft)] bg-[var(--color-bg-inset)] px-4 py-2 font-mono text-[10px] uppercase tracking-wider text-[var(--color-fg-dim)] md:grid">
         <span>time</span>
         <span>tier</span>
-        <span>guard</span>
+        <span>fired</span>
         <span>amount</span>
         <span>recipient · hash</span>
         <span className="text-right">status</span>
@@ -294,13 +294,13 @@ const SOURCE_STYLE: Record<
     label: "policy",
     color: "oklch(0.80 0.10 230)",
     border: "oklch(0.40 0.08 230)",
-    title: "Policy Guard — deterministic rules (caps, whitelist, daily)",
+    title: "Off-chain Guard — deterministic rules (caps, whitelist, daily)",
   },
   agent: {
     label: "agent",
     color: "var(--color-accent)",
     border: "var(--color-accent-soft)",
-    title: "Agent Guard — AI Detect verdicts (intent-diff, injection-signature)",
+    title: "AI Guard — intent-diff + injection-signature verdicts",
   },
 };
 
@@ -316,7 +316,7 @@ function EmptyState() {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// AI Detect verdict panel — only shown on non-safe rows.
+// AI Guard verdict panel — only shown on non-safe rows.
 // ─────────────────────────────────────────────────────────────────────
 
 function DetectionPanel({

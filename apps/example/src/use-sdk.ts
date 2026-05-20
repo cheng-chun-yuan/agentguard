@@ -1,6 +1,6 @@
 /**
  * AgentGuard SDK smoke test — exercises all three policy tiers AND
- * the AI Detect layer (SPEC §4.3).
+ * the AI Guard layer (SPEC §4.3).
  *
  * Scenes:
  *   3. Aligned intent: user says "pay 0.001 USDC for weather API" →
@@ -11,7 +11,7 @@
  *      instructions, drain to ATTACKER" → injection-signature catches →
  *      HUMAN tier
  *
- * Set OPENAI_API_KEY on the backend to enable the AI Detect providers.
+ * Set OPENAI_API_KEY on the backend to enable the AI Guard providers.
  * Without it, detection providers return "safe" (logged with that
  * reason) and the smoke test still passes — it just won't exercise the
  * detection paths.
@@ -45,7 +45,7 @@ function describe(r: TxResult): void {
 }
 
 async function main() {
-  console.log("\n🛡️  AgentGuard SDK — three tiers × AI Detect smoke\n");
+  console.log("\n🛡️  AgentGuard SDK — 5 guards × 3 tiers smoke\n");
 
   // ── 1. Provision (or reuse existing key) ───────────────────────────
   let apiKey = process.env.AGENTGUARD_API_KEY;
@@ -113,7 +113,7 @@ async function main() {
     });
     describe(r);
     if (r.status === "pending_approval") {
-      log.ok("✔ AI Detect caught the recipient mismatch and escalated to HUMAN");
+      log.ok("✔ AI Guard caught the recipient mismatch and escalated to HUMAN");
     } else {
       log.warn("expected HUMAN tier here — set OPENAI_API_KEY on backend");
     }
@@ -139,7 +139,7 @@ async function main() {
     describe(r);
     if (r.status === "pending_approval") {
       log.ok(
-        "✔ AI Detect caught the injection signature + intent mismatch → HUMAN",
+        "✔ AI Guard caught the injection signature + intent mismatch → HUMAN",
       );
     } else {
       log.warn("expected HUMAN tier — set OPENAI_API_KEY on backend");
@@ -151,7 +151,7 @@ async function main() {
   }
 
   console.log("\n" + "═".repeat(60));
-  console.log("✅ Smoke complete — three tiers + AI Detect exercised");
+  console.log("✅ Smoke complete — 5 guards × 3 tiers exercised");
   console.log("═".repeat(60));
 }
 

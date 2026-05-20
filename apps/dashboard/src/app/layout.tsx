@@ -24,9 +24,9 @@ const martianMono = Martian_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AgentGuard — secure execution for AI agents",
+  title: "AgentGuard — the safety layer for AI agents that spend money",
   description:
-    "Drop in an API key. Your agent transacts on-chain with policy enforcement, anomaly detection, and one-click human escalation.",
+    "Non-custodial. AI-aware. Drop in 1 API key and your AI agent transacts on-chain behind 5 configurable guards — on-chain caps, off-chain policy, prompt-injection detection, and one-click human escalation.",
 };
 
 export default function RootLayout({

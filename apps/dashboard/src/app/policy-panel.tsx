@@ -98,7 +98,7 @@ export function PolicyPanel({ apiKey }: { apiKey: string }) {
   return (
     <section className="border border-[var(--color-border)] bg-[var(--color-bg-elev)]">
       <header className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-inset)] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
-        <span>policy</span>
+        <span>off-chain guard · policy</span>
         <span className="text-[var(--color-fg-dim)]">
           {savedAt
             ? `saved ${new Date(savedAt).toLocaleTimeString([], { hour12: false })}`
@@ -111,14 +111,14 @@ export function PolicyPanel({ apiKey }: { apiKey: string }) {
         <div className="md:col-span-2 border border-[var(--color-border-soft)] bg-[var(--color-bg-inset)] px-3 py-2 font-mono text-[11px]">
           <div className="flex items-center justify-between">
             <span className="uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
-              on-chain hard cap
+              on-chain guard · hard cap
             </span>
             <span className="text-[var(--color-accent)]">
               {policy.onChainCapUsdc ?? "—"} USDC
             </span>
           </div>
           <p className="mt-1.5 text-[10px] text-[var(--color-fg-dim)]">
-            stored in the Kernel permission validator on-chain · rotating the
+            EVM-enforced by the Kernel permission validator · rotating the
             session key is required to change it
           </p>
         </div>
