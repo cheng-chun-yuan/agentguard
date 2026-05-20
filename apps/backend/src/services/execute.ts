@@ -133,6 +133,12 @@ export async function executeTransfer(
         })
       : undefined;
 
+  // Which guard layer(s) caused the tier escalation?
+  const triggers: ("policy" | "agent")[] = [];
+  if (policy.tier !== "auto") triggers.push("policy");
+  if (detectAggregate.worst !== "safe") triggers.push("agent");
+  const triggeredBy = triggers.length > 0 ? triggers.join(",") : undefined;
+
   // HUMAN tier never reaches the bundler.
   if (tier === "human") {
     const entry = logActivity({
@@ -145,6 +151,7 @@ export async function executeTransfer(
       amount: req.amount,
       error: combinedReasons.join("; "),
       detection: detectionJson,
+      triggeredBy,
     });
     return {
       status: "pending_approval",
@@ -191,6 +198,7 @@ export async function executeTransfer(
       userOpHash,
       txHash,
       detection: detectionJson,
+      triggeredBy,
     });
 
     return { status: "submitted", tier, userOpHash, txHash };
@@ -206,6 +214,7 @@ export async function executeTransfer(
       amount: req.amount,
       error: message.slice(0, 500),
       detection: detectionJson,
+      triggeredBy,
     });
     throw err;
   }

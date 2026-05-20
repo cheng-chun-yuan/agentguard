@@ -47,6 +47,9 @@ db.exec(`
     error        TEXT,
     -- JSON blob of detection results from the providers registry.
     detection    TEXT,
+    -- Which guard layer(s) caused the tier escalation, e.g. "policy",
+    -- "agent", "policy,agent". NULL for AUTO rows.
+    triggered_by TEXT,
     created_at   INTEGER NOT NULL,
     FOREIGN KEY (agent_id) REFERENCES agents(id)
   );
@@ -61,6 +64,7 @@ db.exec(`
 // run.
 const migrations: { name: string; sql: string }[] = [
   { name: "tx_log.detection", sql: `ALTER TABLE tx_log ADD COLUMN detection TEXT` },
+  { name: "tx_log.triggered_by", sql: `ALTER TABLE tx_log ADD COLUMN triggered_by TEXT` },
 ];
 for (const m of migrations) {
   try {
@@ -107,5 +111,8 @@ export type TxLogRow = {
   tx_hash: string | null;
   error: string | null;
   detection: string | null;
+  /** Comma-separated list of guard layers that escalated this row.
+   *  Possible tokens today: "policy", "agent". */
+  triggered_by: string | null;
   created_at: number;
 };

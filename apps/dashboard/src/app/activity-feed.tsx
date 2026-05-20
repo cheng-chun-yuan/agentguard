@@ -6,8 +6,10 @@ import {
   approveApprovalApi,
   fetchActivity,
   parseDetection,
+  parseSources,
   rejectApprovalApi,
   type DetectionResultJson,
+  type GuardSource,
   type TxLogEntry,
 } from "@/lib/activity";
 import { executeAsOwner } from "@/lib/wallet/owner-execute";
@@ -84,9 +86,10 @@ export function ActivityFeed({ agentId }: { agentId: string }) {
       </header>
 
       {/* Column header */}
-      <div className="hidden grid-cols-[110px_70px_90px_minmax(0,1fr)_120px] gap-3 border-b border-[var(--color-border-soft)] bg-[var(--color-bg-inset)] px-4 py-2 font-mono text-[10px] uppercase tracking-wider text-[var(--color-fg-dim)] md:grid">
+      <div className="hidden grid-cols-[110px_70px_120px_90px_minmax(0,1fr)_120px] gap-3 border-b border-[var(--color-border-soft)] bg-[var(--color-bg-inset)] px-4 py-2 font-mono text-[10px] uppercase tracking-wider text-[var(--color-fg-dim)] md:grid">
         <span>time</span>
         <span>tier</span>
+        <span>guard</span>
         <span>amount</span>
         <span>recipient · hash</span>
         <span className="text-right">status</span>
@@ -191,10 +194,11 @@ function ActivityRow({ entry }: { entry: TxLogEntry }) {
   const statusColor = STATUS_COLORS[entry.status];
   const isPending = entry.status === "pending_approval";
   const detection = parseDetection(entry.detection);
+  const sources = parseSources(entry.triggered_by);
 
   return (
     <li
-      className={`grid grid-cols-1 gap-2 px-4 py-3 font-mono text-[12px] hover:bg-[var(--color-bg-hover)] md:grid-cols-[110px_70px_90px_minmax(0,1fr)_120px] md:gap-3 ${
+      className={`grid grid-cols-1 gap-2 px-4 py-3 font-mono text-[12px] hover:bg-[var(--color-bg-hover)] md:grid-cols-[110px_70px_120px_90px_minmax(0,1fr)_120px] md:gap-3 ${
         isPending ? "bg-[color-mix(in_oklch,var(--color-pending)_5%,transparent)]" : ""
       }`}
     >
@@ -206,6 +210,8 @@ function ActivityRow({ entry }: { entry: TxLogEntry }) {
       >
         {entry.tier}
       </span>
+
+      <SourceChips sources={sources} />
 
       <span className="text-[var(--color-fg)]">
         {entry.amount ?? "—"}{" "}
@@ -255,6 +261,48 @@ function ActivityRow({ entry }: { entry: TxLogEntry }) {
     </li>
   );
 }
+
+// One small chip per guard layer that fired on this row.
+function SourceChips({ sources }: { sources: GuardSource[] }) {
+  if (sources.length === 0) {
+    return <span className="text-[var(--color-fg-dim)]">—</span>;
+  }
+  return (
+    <span className="flex flex-wrap items-center gap-1">
+      {sources.map((s) => (
+        <span
+          key={s}
+          className="border px-1.5 py-0.5 text-[10px] uppercase tracking-wider"
+          style={{
+            color: SOURCE_STYLE[s].color,
+            borderColor: SOURCE_STYLE[s].border,
+          }}
+          title={SOURCE_STYLE[s].title}
+        >
+          {SOURCE_STYLE[s].label}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+const SOURCE_STYLE: Record<
+  GuardSource,
+  { label: string; color: string; border: string; title: string }
+> = {
+  policy: {
+    label: "policy",
+    color: "oklch(0.80 0.10 230)",
+    border: "oklch(0.40 0.08 230)",
+    title: "Policy Guard — deterministic rules (caps, whitelist, daily)",
+  },
+  agent: {
+    label: "agent",
+    color: "var(--color-accent)",
+    border: "var(--color-accent-soft)",
+    title: "Agent Guard — AI Detect verdicts (intent-diff, injection-signature)",
+  },
+};
 
 function EmptyState() {
   return (

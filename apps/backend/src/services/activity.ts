@@ -14,6 +14,8 @@ export type LogActivityInput = {
   error?: string;
   /** Detection verdicts serialized as JSON string. */
   detection?: string;
+  /** Comma-separated list of guard layers that escalated this row. */
+  triggeredBy?: string;
 };
 
 export function logActivity(input: LogActivityInput): TxLogRow {
@@ -22,8 +24,8 @@ export function logActivity(input: LogActivityInput): TxLogRow {
   db.prepare(
     `INSERT INTO tx_log (id, agent_id, kind, tier, status, target, token,
                          amount, user_op_hash, tx_hash, error, detection,
-                         created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                         triggered_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.agentId,
@@ -37,6 +39,7 @@ export function logActivity(input: LogActivityInput): TxLogRow {
     input.txHash ?? null,
     input.error ?? null,
     input.detection ?? null,
+    input.triggeredBy ?? null,
     now,
   );
   return {
@@ -52,6 +55,7 @@ export function logActivity(input: LogActivityInput): TxLogRow {
     tx_hash: input.txHash ?? null,
     error: input.error ?? null,
     detection: input.detection ?? null,
+    triggered_by: input.triggeredBy ?? null,
     created_at: now,
   };
 }

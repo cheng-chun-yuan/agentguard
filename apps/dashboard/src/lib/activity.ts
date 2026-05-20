@@ -27,8 +27,24 @@ export type TxLogEntry = {
   error: string | null;
   /** JSON-encoded DetectionResultJson, or null if no detection ran. */
   detection: string | null;
+  /** Comma-separated guard layers that escalated the row, e.g. "policy,agent".
+   *  Null for AUTO rows. */
+  triggered_by: string | null;
   created_at: number;
 };
+
+export type GuardSource = "policy" | "agent";
+
+/** Parse `triggered_by` into a deduped, ordered array. */
+export function parseSources(raw: string | null): GuardSource[] {
+  if (!raw) return [];
+  const out: GuardSource[] = [];
+  for (const tok of raw.split(",")) {
+    const t = tok.trim();
+    if ((t === "policy" || t === "agent") && !out.includes(t)) out.push(t);
+  }
+  return out;
+}
 
 export function parseDetection(
   raw: string | null,
