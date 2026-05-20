@@ -1,0 +1,191 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { fetchActivity, type TxLogEntry } from "@/lib/activity";
+
+const POLL_MS = 3000;
+
+export function ActivityFeed({ agentId }: { agentId: string }) {
+  const [entries, setEntries] = useState<TxLogEntry[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [pulse, setPulse] = useState(0); // increments on each successful poll
+
+  useEffect(() => {
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    async function tick() {
+      try {
+        const next = await fetchActivity(agentId);
+        if (alive) {
+          setEntries(next);
+          setError(null);
+          setPulse((p) => p + 1);
+        }
+      } catch (err) {
+        if (alive)
+          setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        if (alive) timer = setTimeout(tick, POLL_MS);
+      }
+    }
+
+    tick();
+    return () => {
+      alive = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [agentId]);
+
+  const stats = useMemo(() => {
+    let submitted = 0;
+    let rejected = 0;
+    for (const e of entries) {
+      if (e.status === "submitted") submitted++;
+      else if (e.status === "rejected") rejected++;
+    }
+    return { submitted, rejected, total: entries.length };
+  }, [entries]);
+
+  return (
+    <section className="border border-[var(--color-border)] bg-[var(--color-bg-elev)]">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-bg-inset)] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">
+        <div className="flex items-center gap-3 text-[var(--color-fg-dim)]">
+          <span>activity</span>
+          <span className="text-[var(--color-fg-dim)]">·</span>
+          <span className="text-[var(--color-fg-muted)]">
+            {stats.total} events
+          </span>
+          {stats.submitted > 0 && (
+            <span className="text-[var(--color-ok)]">
+              {stats.submitted} ok
+            </span>
+          )}
+          {stats.rejected > 0 && (
+            <span className="text-[var(--color-fail)]">
+              {stats.rejected} blocked
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-[var(--color-accent)]">
+          <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" />
+          live · {pulse}
+        </div>
+      </header>
+
+      {/* Column header */}
+      <div className="hidden grid-cols-[110px_70px_90px_minmax(0,1fr)_120px] gap-3 border-b border-[var(--color-border-soft)] bg-[var(--color-bg-inset)] px-4 py-2 font-mono text-[10px] uppercase tracking-wider text-[var(--color-fg-dim)] md:grid">
+        <span>time</span>
+        <span>tier</span>
+        <span>amount</span>
+        <span>recipient · hash</span>
+        <span className="text-right">status</span>
+      </div>
+
+      {error && (
+        <div className="border-b border-[var(--color-fail-soft)] bg-[var(--color-bg-inset)] px-4 py-2 font-mono text-[11px] text-[var(--color-fail)]">
+          polling error: {error}
+        </div>
+      )}
+
+      {entries.length === 0 && !error ? (
+        <EmptyState />
+      ) : (
+        <ul className="divide-y divide-[var(--color-border-soft)]">
+          {entries.map((e) => (
+            <ActivityRow key={e.id} entry={e} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function ActivityRow({ entry }: { entry: TxLogEntry }) {
+  const time = new Date(entry.created_at).toLocaleTimeString([], {
+    hour12: false,
+  });
+  const tierColor = TIER_COLORS[entry.tier];
+  const statusColor = STATUS_COLORS[entry.status];
+
+  return (
+    <li className="grid grid-cols-1 gap-2 px-4 py-3 font-mono text-[12px] hover:bg-[var(--color-bg-hover)] md:grid-cols-[110px_70px_90px_minmax(0,1fr)_120px] md:gap-3">
+      <span className="text-[var(--color-fg-dim)]">{time}</span>
+
+      <span
+        className="text-[11px] font-semibold uppercase tracking-wider"
+        style={{ color: tierColor }}
+      >
+        {entry.tier}
+      </span>
+
+      <span className="text-[var(--color-fg)]">
+        {entry.amount ?? "—"}{" "}
+        <span className="text-[var(--color-fg-dim)]">{entry.token ?? ""}</span>
+      </span>
+
+      <div className="flex min-w-0 flex-col gap-0.5">
+        {entry.target && (
+          <span className="truncate text-[var(--color-fg-muted)]">
+            → {entry.target}
+          </span>
+        )}
+        {entry.tx_hash && (
+          <a
+            href={`https://sepolia.basescan.org/tx/${entry.tx_hash}`}
+            target="_blank"
+            rel="noreferrer"
+            className="truncate text-[var(--color-fg)] underline decoration-dotted underline-offset-4 hover:text-[var(--color-accent)]"
+          >
+            {entry.tx_hash}
+          </a>
+        )}
+        {entry.error && (
+          <span className="truncate text-[var(--color-fail-soft)]">
+            {entry.error.split("\n")[0]}
+          </span>
+        )}
+      </div>
+
+      <span
+        className="text-right text-[11px] uppercase tracking-wider"
+        style={{ color: statusColor }}
+      >
+        {STATUS_LABELS[entry.status]}
+      </span>
+    </li>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-start gap-3 px-4 py-8 font-mono text-[12px] text-[var(--color-fg-dim)]">
+      <span className="uppercase tracking-[0.2em]">awaiting first event</span>
+      <pre className="border border-[var(--color-border-soft)] bg-[var(--color-bg-inset)] px-3 py-2 text-[11px] text-[var(--color-fg-muted)]">
+        $ AGENTGUARD_API_KEY=ag_test_… bun run smoke
+      </pre>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Tier / status colors — semantic tokens, no rainbow palette here.
+// ─────────────────────────────────────────────────────────────────────
+
+const TIER_COLORS: Record<TxLogEntry["tier"], string> = {
+  auto: "var(--color-ok)",
+  guard: "var(--color-accent)",
+  human: "var(--color-pending)",
+};
+
+const STATUS_COLORS: Record<TxLogEntry["status"], string> = {
+  submitted: "var(--color-ok)",
+  rejected: "var(--color-fail)",
+  pending_approval: "var(--color-pending)",
+};
+
+const STATUS_LABELS: Record<TxLogEntry["status"], string> = {
+  submitted: "ok",
+  rejected: "blocked",
+  pending_approval: "pending",
+};

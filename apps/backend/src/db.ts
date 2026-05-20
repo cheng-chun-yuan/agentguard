@@ -32,6 +32,25 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_api_keys_agent_id ON api_keys(agent_id);
+
+  CREATE TABLE IF NOT EXISTS tx_log (
+    id           TEXT PRIMARY KEY,
+    agent_id     TEXT NOT NULL,
+    kind         TEXT NOT NULL,        -- 'transfer' for now
+    tier         TEXT NOT NULL,        -- 'auto' | 'guard' | 'human'
+    status       TEXT NOT NULL,        -- 'submitted' | 'rejected' | 'pending_approval'
+    target       TEXT,                 -- recipient address
+    token        TEXT,
+    amount       TEXT,                 -- human-readable (e.g. "0.001")
+    user_op_hash TEXT,
+    tx_hash      TEXT,
+    error        TEXT,
+    created_at   INTEGER NOT NULL,
+    FOREIGN KEY (agent_id) REFERENCES agents(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_tx_log_agent_id ON tx_log(agent_id);
+  CREATE INDEX IF NOT EXISTS idx_tx_log_created_at ON tx_log(created_at DESC);
 `);
 
 export type AgentRow = {
@@ -53,4 +72,19 @@ export type ApiKeyRow = {
   agent_id: string;
   created_at: number;
   revoked_at: number | null;
+};
+
+export type TxLogRow = {
+  id: string;
+  agent_id: string;
+  kind: "transfer";
+  tier: "auto" | "guard" | "human";
+  status: "submitted" | "rejected" | "pending_approval";
+  target: string | null;
+  token: string | null;
+  amount: string | null;
+  user_op_hash: string | null;
+  tx_hash: string | null;
+  error: string | null;
+  created_at: number;
 };

@@ -6,6 +6,7 @@ import {
 } from "viem";
 import { sessionClientFor, USDC_ADDRESS } from "./kernel";
 import type { AgentRow } from "../db";
+import { logActivity } from "./activity";
 
 // USDC has 6 decimals on Base.
 const TOKEN_REGISTRY: Record<string, { address: Address; decimals: number }> = {
@@ -63,30 +64,54 @@ export async function executeTransfer(
     );
   }
 
-  const client = await sessionClientFor({
-    permissionAccountBlob: req.agent.permission_account_blob,
-  });
+  try {
+    const client = await sessionClientFor({
+      permissionAccountBlob: req.agent.permission_account_blob,
+    });
 
-  const callData = await client.account.encodeCalls([
-    {
-      to: token.address,
-      value: 0n,
-      data: encodeFunctionData({
-        abi: ERC20_TRANSFER_ABI,
-        functionName: "transfer",
-        args: [req.to, amountWei],
-      }),
-    },
-  ]);
+    const callData = await client.account.encodeCalls([
+      {
+        to: token.address,
+        value: 0n,
+        data: encodeFunctionData({
+          abi: ERC20_TRANSFER_ABI,
+          functionName: "transfer",
+          args: [req.to, amountWei],
+        }),
+      },
+    ]);
 
-  const userOpHash = await client.sendUserOperation({ callData });
-  const receipt = await client.waitForUserOperationReceipt({
-    hash: userOpHash,
-  });
+    const userOpHash = await client.sendUserOperation({ callData });
+    const receipt = await client.waitForUserOperationReceipt({
+      hash: userOpHash,
+    });
+    const txHash = receipt.receipt.transactionHash as Hex;
 
-  return {
-    status: "submitted",
-    userOpHash,
-    txHash: receipt.receipt.transactionHash as Hex,
-  };
+    logActivity({
+      agentId: req.agent.id,
+      kind: "transfer",
+      tier: "auto",
+      status: "submitted",
+      target: req.to,
+      token: req.token.toUpperCase(),
+      amount: req.amount,
+      userOpHash,
+      txHash,
+    });
+
+    return { status: "submitted", userOpHash, txHash };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logActivity({
+      agentId: req.agent.id,
+      kind: "transfer",
+      tier: "auto",
+      status: "rejected",
+      target: req.to,
+      token: req.token.toUpperCase(),
+      amount: req.amount,
+      error: message.slice(0, 500),
+    });
+    throw err;
+  }
 }

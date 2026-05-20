@@ -3,6 +3,7 @@ import { cors } from "@elysiajs/cors";
 import { env } from "./env";
 import { agentsRoute } from "./routes/agents";
 import { executeRoute } from "./routes/execute";
+import { activityRoute } from "./routes/activity";
 import { AuthError } from "./middleware/auth";
 
 const app = new Elysia()
@@ -30,6 +31,7 @@ const app = new Elysia()
   .get("/health", () => ({ ok: true, service: "agentguard-backend" }))
   .use(agentsRoute)
   .use(executeRoute)
+  .use(activityRoute)
   .listen(env.PORT);
 
 console.log(

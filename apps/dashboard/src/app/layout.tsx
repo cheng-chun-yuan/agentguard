@@ -1,22 +1,32 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Funnel_Sans, Funnel_Display, Martian_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const funnelSans = Funnel_Sans({
+  variable: "--font-funnel-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const funnelDisplay = Funnel_Display({
+  variable: "--font-funnel-display",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const martianMono = Martian_Mono({
+  variable: "--font-martian-mono",
+  subsets: ["latin"],
+  display: "swap",
+  // Trim the variable axis range — we don't need ultralight or extra-wide.
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
-  title: "AgentGuard — Secure SDK for AI Agents",
+  title: "AgentGuard — secure execution for AI agents",
   description:
-    "Stripe-grade DX for AI agents. Drop in an API key, transact on-chain with policy + AI safety + human escalation.",
+    "Drop in an API key. Your agent transacts on-chain with policy enforcement, anomaly detection, and one-click human escalation.",
 };
 
 export default function RootLayout({
@@ -27,10 +37,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${funnelSans.variable} ${funnelDisplay.variable} ${martianMono.variable} antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-zinc-50 dark:bg-zinc-950">
+      <body className="min-h-screen flex flex-col">
         <Providers>{children}</Providers>
       </body>
     </html>

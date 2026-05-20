@@ -1,26 +1,88 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ──────────────────────────────────────────────────────────────────
+   AgentGuard — Operations console palette.
+
+   - Dark only. Tunnel-warmed near-black, never pure black.
+   - Single CRT-amber accent, used sparingly (live indicator, primary CTA).
+   - Status colors are semantic and apply to tx state only.
+   - All neutrals are tinted ~hue 80 (warm) so the palette feels cohesive.
+   ────────────────────────────────────────────────────────────────── */
+
+@theme {
+  /* surfaces */
+  --color-bg:          oklch(0.16 0.005 80);
+  --color-bg-elev:     oklch(0.20 0.005 80);
+  --color-bg-hover:    oklch(0.24 0.005 80);
+  --color-bg-inset:    oklch(0.13 0.005 80);
+
+  /* text */
+  --color-fg:          oklch(0.95 0.005 80);
+  --color-fg-muted:    oklch(0.68 0.010 80);
+  --color-fg-dim:      oklch(0.48 0.010 80);
+
+  /* borders */
+  --color-border:      oklch(0.28 0.005 80);
+  --color-border-soft: oklch(0.23 0.005 80);
+  --color-border-strong: oklch(0.40 0.005 80);
+
+  /* primary accent — CRT amber phosphor */
+  --color-accent:      oklch(0.82 0.14 80);
+  --color-accent-soft: oklch(0.55 0.10 80);
+  --color-accent-ink:  oklch(0.18 0.04 80);
+
+  /* status — tx state only */
+  --color-ok:          oklch(0.78 0.16 145);
+  --color-ok-soft:     oklch(0.45 0.10 145);
+  --color-fail:        oklch(0.70 0.20 28);
+  --color-fail-soft:   oklch(0.40 0.10 28);
+  --color-pending:     oklch(0.80 0.15 75);
+
+  /* fonts (injected by next/font in layout.tsx) */
+  --font-sans:    var(--font-funnel-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    var(--font-martian-mono), ui-monospace, "SF Mono", monospace;
+  --font-display: var(--font-funnel-display), var(--font-funnel-sans), sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  html, body {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    /* Slightly looser leading for light text on dark — per impeccable typography rules. */
+    line-height: 1.55;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  ::selection {
+    background: oklch(0.82 0.14 80 / 0.35);
+    color: var(--color-fg);
+  }
+
+  /* Tight tabular figures for hashes, amounts, timestamps. */
+  .font-mono, code, kbd, samp {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "ss01", "calt";
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ───── Live pulse — one of two motion moments in the whole app. ───── */
+@keyframes pulse-amber {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+.pulse-dot {
+  animation: pulse-amber 1.6s ease-in-out infinite;
+}
+
+/* ───── Subtle scan-line for the live feed header, like a CRT.
+        Decorative but very low contrast — never reads as kitsch.    ───── */
+.scanline {
+  background-image: linear-gradient(
+    180deg,
+    transparent 0,
+    transparent 2px,
+    color-mix(in oklch, var(--color-fg) 3%, transparent) 2px,
+    color-mix(in oklch, var(--color-fg) 3%, transparent) 3px
+  );
+  background-size: 100% 3px;
 }
