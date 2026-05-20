@@ -4,7 +4,7 @@
 
 Running today: end-to-end onboarding, off-chain policy engine, owner-signed approval queue, AI Guard with intent-diff + injection-signature providers, and x402 micropayment fast path. **Base Sepolia · Bun · Next.js 16.**
 
-**Live demo:** https://agentguard-dashboard-seven.vercel.app (frontend on Vercel · backend via Cloudflare tunnel to local dev — may be offline if our laptop is asleep)
+**Live demo:** https://agentguard-dashboard-seven.vercel.app
 **Repo:** https://github.com/cheng-chun-yuan/agentguard
 **Pitch deck:** [`PITCH-DECK.pdf`](./PITCH-DECK.pdf) · [`PITCH-DECK.pptx`](./PITCH-DECK.pptx) · source: [`PITCH-DECK.md`](./PITCH-DECK.md)
 **Demo recording script:** [`DEMO-SCRIPT.md`](./DEMO-SCRIPT.md)

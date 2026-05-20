@@ -11,3 +11,6 @@ dist
 .turbo
 .DS_Store
 bun.lockb
+
+# Skill / tool artifacts (not source)
+.impeccable.md
