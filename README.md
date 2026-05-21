@@ -6,8 +6,8 @@ Running today: end-to-end onboarding, off-chain policy engine, owner-signed appr
 
 **Live demo:** https://agentguard-dashboard-seven.vercel.app
 **Repo:** https://github.com/cheng-chun-yuan/agentguard
-**Pitch deck:** [`docs/PITCH-DECK.pdf`](./docs/PITCH-DECK.pdf) · [`pptx`](./docs/PITCH-DECK.pptx) · [source](./docs/PITCH-DECK.md)
-**Project summary:** [`docs/PROJECT-DESCRIPTION.pdf`](./docs/PROJECT-DESCRIPTION.pdf) · [source](./docs/PROJECT-DESCRIPTION.md)
+**Pitch deck:** [`docs/PITCH-DECK.pdf`](https://github.com/cheng-chun-yuan/agentguard/blob/main/docs/PITCH-DECK.pdf) · [`pptx`](https://github.com/cheng-chun-yuan/agentguard/blob/main/docs/PITCH-DECK.pptx) · [source](./docs/PITCH-DECK.md)
+**Project summary:** [`docs/PROJECT-DESCRIPTION.pdf`](https://github.com/cheng-chun-yuan/agentguard/blob/main/docs/PROJECT-DESCRIPTION.pdf) · [source](./docs/PROJECT-DESCRIPTION.md)
 **Demo recording script:** [`docs/DEMO-SCRIPT.md`](./docs/DEMO-SCRIPT.md)
 **Design doc:** [`docs/SPEC.md`](./docs/SPEC.md)
 

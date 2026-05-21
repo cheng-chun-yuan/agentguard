@@ -22,7 +22,8 @@ style: |
   h1 { font-size: 2.2em; line-height: 1.1; }
   h2 { font-size: 1.4em; color: #A8A6A0; }
   h3 { font-size: 1.05em; color: #E2A32A; text-transform: uppercase; letter-spacing: 0.1em; }
-  strong { color: #E2A32A; }
+  strong { color: #E2A32A !important; }
+  h1 strong, h2 strong { color: #E2A32A !important; }
   ul, ol { font-size: 1.05em; line-height: 1.6; }
   li { margin-bottom: 0.35em; }
   code, pre {
@@ -116,6 +117,16 @@ style: |
     font-size: 0.85em;
     letter-spacing: 0.1em;
   }
+  pre, pre code { font-variant-emoji: text; }
+  small { font-size: 0.7em; color: #888; line-height: 1.3; display: block; margin-top: 0.6em; }
+  section.dense { padding: 36px 64px; background-color: #1A1610; color: #E8E6E0; }
+  section.dense h1 { font-size: 1.7em; margin-bottom: 0.3em; }
+  section.dense table { font-size: 0.78em; background: transparent; color: #E8E6E0; }
+  section.dense th, section.dense td { padding: 0.35em 0.8em; background: transparent; color: #E8E6E0; border-bottom: 1px solid #2A2620; }
+  section.dense th { color: #A8A6A0; }
+  section.dense tr { background: transparent !important; }
+  section.dense pre { font-size: 0.75em; padding: 0.7em; background: #0F0C08; }
+  section.dense ul { font-size: 0.95em; line-height: 1.4; }
 ---
 
 <!-- _class: lead -->
@@ -179,6 +190,8 @@ and the defaults are safe.
 
 ---
 
+<!-- _class: dense -->
+
 # Architecture · where the 5 layers live
 
 ```
@@ -186,9 +199,9 @@ and the defaults are safe.
         │
         ▼  @agentguard/sdk  ──────────────── ① Single API
    Backend
-        ├──▶  Policy Engine  ─────────────── ③ Off-chain Guard
-        ├──▶  AI Guard  ──────────────────── ④ AI Guard
-        └──▶  Tier Router
+        ├──>  Policy Engine  ─────────────── ③ Off-chain Guard
+        ├──>  AI Guard  ──────────────────── ④ AI Guard
+        └──>  Tier Router
                   │
                   ▼
         ZeroDev v3 bundler + paymaster
@@ -333,16 +346,16 @@ asleep, the transaction is rejected, not waved through.
 
 ---
 
-# What's Shipped — week one
+<!-- _class: dense -->
 
-![w:900](./dashboard-tiers.png)
+# What's Shipped — week one · [`live demo`](https://agentguard-dashboard-seven.vercel.app)
+
+![w:820](./dashboard-tiers.png)
 
 - ✅ **Onboarding** · Privy → Create Agent → API key, **~30s**, on-chain
 - ✅ **Three-tier router** · live above · one SDK call, narrowed `status`
 - ✅ **x402 fast path** · 3 sequential calls settle **~4s each** on Base Sepolia
 - ✅ **AI Guard** · intent-diff + injection · **Emergency Stop** sweeps in ~5s
-
-**Live:** [`agentguard-dashboard-seven.vercel.app`](https://agentguard-dashboard-seven.vercel.app)
 
 <!--
 SLIDE 10, 30 SECONDS.
@@ -358,19 +371,21 @@ five seconds. Live URL is at the bottom — judges can sign up themselves.
 
 ---
 
+<!-- _class: dense -->
+
 # Differentiation
 
 |                      | Custody       | Policy             | Human escalation | AI-aware |
 | -------------------- | ------------- | ------------------ | ---------------- | -------- |
 | Coinbase CDP         | ❌ custodial   | rate limits only   | ❌                | ❌        |
 | Crossmint            | ❌ custodial   | basic              | ❌                | ❌        |
-| Privy server wallets | ❌ Privy holds | basic              | ❌                | ❌        |
+| Privy server wallets¹ | ❌ Privy holds | basic              | ❌                | ❌        |
 | Safe + manual        | ✅             | multi-sig          | ✅ manual         | ❌        |
 | **AgentGuard**       | ✅ Privy+7702  | whitelist · AI · tiered | ✅ built-in | ✅        |
 
-**We're the only row with all four checks.** The 7702+session-key combo is what unlocks it.
+**The only row with all four checks.** 7702 + session keys is the unlock.
 
-<small>*Privy "server wallets" = Privy's custodial product. AgentGuard uses Privy's **embedded TEE wallets** — different product, owner-controlled key.*</small>
+<small>¹ Privy *server wallets* = custodial product. AgentGuard uses Privy's *embedded TEE wallets* — owner-controlled key.</small>
 
 <!--
 SLIDE 11, 30 SECONDS.
@@ -417,18 +432,18 @@ makes the marketplace more attractive to vendors. That's the platform.
 
 ---
 
+<!-- _class: dense -->
+
 # Tech Stack — every choice load-bearing
 
-| Layer          | Choice                              | Why                                                  |
-| -------------- | ----------------------------------- | ---------------------------------------------------- |
-| **Identity**   | Privy embedded wallet (TEE)         | Owner key never leaves the TEE; OAuth recovery       |
-| **Account**    | EIP-7702 → ZeroDev Kernel v3.3      | Upgrades EOA *in place* — same address, no migration |
-| **Validators** | ZeroDev Permissions API             | `CallPolicy` + `TimestampPolicy` + `RateLimitPolicy` stacked |
-| **Bundler**    | ZeroDev v3 + paymaster              | All gas sponsored; user pays 0 ETH                   |
-| **Chain**      | Base Sepolia (→ Base mainnet)       | Cheap, 7702-live, USDC native                        |
-| **AI Guard**   | GPT-4o-mini                         | Cheap, fast, structured JSON                         |
-| **SDK**        | TypeScript `@agentguard/sdk`        | One-line drop-in; x402-aware `.fetch()`              |
-| **Backend**    | Bun · Elysia · SQLite               | Tight, type-safe, single-binary deploy               |
+| Layer            | Choice                          | Why                                                  |
+| ---------------- | ------------------------------- | ---------------------------------------------------- |
+| **Identity**     | Privy embedded wallet (TEE)     | Owner key never leaves the TEE; OAuth recovery       |
+| **Account**      | EIP-7702 → ZeroDev Kernel v3.3  | Upgrades EOA *in place* — same address, no migration |
+| **Validators**   | ZeroDev Permissions API         | `CallPolicy` + `TimestampPolicy` + `RateLimitPolicy` stacked |
+| **Bundler / gas** | ZeroDev v3 + paymaster         | All gas sponsored; user pays 0 ETH                   |
+| **Chain · AI**   | Base Sepolia · GPT-4o-mini      | 7702-live, USDC native · cheap, fast, structured JSON |
+| **SDK · Backend** | TS `@agentguard/sdk` · Bun · Elysia · SQLite | One-line drop-in · type-safe, single-binary deploy |
 
 <!--
 SLIDE 13, 25 SECONDS.

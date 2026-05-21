@@ -127,6 +127,6 @@ Defense in depth — no single layer is the safety story:
 
 - **Live demo:** https://agentguard-dashboard-seven.vercel.app
 - **Repo:** https://github.com/cheng-chun-yuan/agentguard
-- **Pitch deck:** [`PITCH-DECK.pdf`](./PITCH-DECK.pdf)
-- **Demo recording script:** [`DEMO-SCRIPT.md`](./DEMO-SCRIPT.md)
-- **Full design doc:** [`SPEC.md`](./SPEC.md)
+- **Pitch deck:** [`PITCH-DECK.pdf`](https://github.com/cheng-chun-yuan/agentguard/blob/main/docs/PITCH-DECK.pdf)
+- **Demo recording script:** [`DEMO-SCRIPT.md`](https://github.com/cheng-chun-yuan/agentguard/blob/main/docs/DEMO-SCRIPT.md)
+- **Full design doc:** [`SPEC.md`](https://github.com/cheng-chun-yuan/agentguard/blob/main/docs/SPEC.md)
