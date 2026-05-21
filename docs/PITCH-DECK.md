@@ -144,7 +144,7 @@ Stripe-grade DX. Keys never leave the user.
 ## Pick one. Lose either way.
 
 **Custodial wallet** → the platform holds your keys.
-**Raw EOA agent** → one prompt injection drains it.
+**Raw EOA agent** (a plain private key) → one prompt injection drains it.
 
 <!--
 SLIDE 2, 20 SECONDS.
@@ -156,15 +156,17 @@ autonomously without anyone holding ultimate authority over the funds.
 
 ---
 
-# 5 things to remember
+# 5 layers · 3 decision tiers per call
 
-1. **Single API** — one line of code
-2. **On-chain Guard** — EVM enforces every cap
-3. **Off-chain Guard** — whitelist · slippage · rate-limit
-4. **AI Guard** — intent-diff + injection, pluggable
-5. **Human Approve** — anomalous → Privy popup
+| Tier        | Layers active     | Latency | Who signs           |
+| ----------- | ----------------- | ------- | ------------------- |
+| **AUTO**    | ① ②               | <1s     | session key         |
+| **GUARD**   | ① ② ③ ④           | ~1–2s   | session key         |
+| **HUMAN**   | ① ② ③ ④ ⑤         | async   | owner via Privy     |
 
-> One config object. Defaults safe. Every layer opt-in.
+① Single API · ② On-chain Guard · ③ Off-chain Guard · ④ AI Guard · ⑤ Human Approve
+
+> The router picks the tier. Defaults safe. Every layer opt-in.
 
 <!--
 SLIDE 3, 20 SECONDS.
@@ -199,6 +201,8 @@ and the defaults are safe.
 
 Owner key **never** leaves the TEE.
 
+<small>**TEE** = trusted execution enclave (key born + signs inside, never exits) · **EIP-7702** = upgrades a plain wallet *in place* into a smart account (same address) · **Kernel v3.3** = ZeroDev's smart-account contract that runs the validator modules</small>
+
 <!--
 SLIDE 4, 30 SECONDS.
 Here's where those five layers physically live. The SDK at the top —
@@ -219,6 +223,7 @@ numbered box.
 # 1 · Single API
 
 ```ts
+const guard = new AgentGuard({ apiKey })
 await guard.fetch(url)
 ```
 
@@ -237,14 +242,16 @@ is opt-in configuration on this same object.
 
 ---
 
-<!-- _class: hero -->
-
 # 2 · On-chain Guard
 
 ## ≤ $10 / day
 
-Blast radius of a fully-compromised agent.
-**EVM-enforced** by the Kernel session-key validator.
+3 EVM-enforced policy modules stacked on the session key:
+- `CallPolicy` — **≤ $0.01 per call**, USDC contract only
+- `TimestampPolicy` — **auto-expires every 24h**
+- `RateLimitPolicy` — **100 calls / 24h window**
+
+**Worst case if our entire backend is compromised.**
 
 <!--
 SLIDE 6, 20 SECONDS.
@@ -265,8 +272,8 @@ users tune it down.
 offchain: { whitelist, slippage, rateLimit }
 ```
 
-Plain TypeScript. Hot-reload.
-**Fails escalate** — never silently drop.
+Plain TypeScript. Hot-reload, no contract redeploy.
+**Fails escalate to HUMAN tier** — never silently dropped.
 
 <!--
 SLIDE 7, 20 SECONDS.
@@ -304,16 +311,16 @@ safer. Marketplace, not a point tool.
 
 ---
 
-<!-- _class: hero -->
-
 # 5 · Human Approve
 
+**Triggers:** over cap · off whitelist · AI-flagged
+
 ```
-anomalous  →  Privy push  →  owner taps  →  TEE signs
+push  →  owner taps  →  TEE (enclave) signs
 ```
 
 Owner key **never** leaves the TEE.
-**Fail-closed** — timeout → reject.
+**Fail-closed** — timeout → reject, never waved through.
 
 <!--
 SLIDE 9, 20 SECONDS.
@@ -322,6 +329,140 @@ cap, off the whitelist, or AI-flagged. They tap approve inside Privy,
 the owner key signs inside the TEE, the userop goes out. The backend
 never sees the key. And the default is fail-closed — if the owner is
 asleep, the transaction is rejected, not waved through.
+-->
+
+---
+
+# What's Shipped — week one
+
+![w:900](./dashboard-tiers.png)
+
+- ✅ **Onboarding** · Privy → Create Agent → API key, **~30s**, on-chain
+- ✅ **Three-tier router** · live above · one SDK call, narrowed `status`
+- ✅ **x402 fast path** · 3 sequential calls settle **~4s each** on Base Sepolia
+- ✅ **AI Guard** · intent-diff + injection · **Emergency Stop** sweeps in ~5s
+
+**Live:** [`agentguard-dashboard-seven.vercel.app`](https://agentguard-dashboard-seven.vercel.app)
+
+<!--
+SLIDE 10, 30 SECONDS.
+This is what's running today, not what's planned. Onboarding takes 30 seconds
+and ends with an API key the developer pastes into their agent. Policy editor
+hot-reloads. AI Guard catches intent drift live in the demo. Three execution
+tiers all wire into a single SDK call — the developer just awaits, the
+status field tells them which path was taken. x402 settles in about four
+seconds, which is the unit-economics number for micropayments. Emergency
+Stop is one Privy popup that sweeps the account and revokes the key in
+five seconds. Live URL is at the bottom — judges can sign up themselves.
+-->
+
+---
+
+# Differentiation
+
+|                      | Custody       | Policy             | Human escalation | AI-aware |
+| -------------------- | ------------- | ------------------ | ---------------- | -------- |
+| Coinbase CDP         | ❌ custodial   | rate limits only   | ❌                | ❌        |
+| Crossmint            | ❌ custodial   | basic              | ❌                | ❌        |
+| Privy server wallets | ❌ Privy holds | basic              | ❌                | ❌        |
+| Safe + manual        | ✅             | multi-sig          | ✅ manual         | ❌        |
+| **AgentGuard**       | ✅ Privy+7702  | whitelist · AI · tiered | ✅ built-in | ✅        |
+
+**We're the only row with all four checks.** The 7702+session-key combo is what unlocks it.
+
+<small>*Privy "server wallets" = Privy's custodial product. AgentGuard uses Privy's **embedded TEE wallets** — different product, owner-controlled key.*</small>
+
+<!--
+SLIDE 11, 30 SECONDS.
+Every existing option fails at least one column. Coinbase and Crossmint
+custody the keys, full stop — not non-custodial, regulators and ToS become
+attack surfaces. Privy server wallets, same issue, Privy holds them. Safe is
+non-custodial but requires manual signing per action, which kills agent
+autonomy. We're the only row that hits all four: non-custodial via 7702,
+rich policy via the session-key validator, human escalation built into the
+flow, and AI-aware via the pluggable provider interface. The 7702-plus-
+session-key combo is the architectural unlock.
+-->
+
+---
+
+# Why this is a platform, not a tool
+
+```ts
+detect: ["agentguard/intent-diff", "lakera/guard", "protectai/rebuff"]
+```
+
+**`DetectionProvider` interface** — one config line, any vendor plugs in.
+
+| Built-in (shipped)              | Premium (post-hackathon)             |
+| ------------------------------- | ------------------------------------ |
+| `agentguard/intent-diff`        | **Lakera Guard**                     |
+| `agentguard/injection-signature` | **Protect AI** · **Rebuff** · **Promptfoo** |
+
+**Revenue =** margin on premium provider calls. Not subscription. Not tx fee.
+**Network effect:** every new provider makes every existing developer safer.
+
+<!--
+SLIDE 12, 30 SECONDS.
+AI Guard is an interface, not a single engine. We ship two providers today.
+Developers add a vendor by adding one string to the config — that's the
+extension point. Lakera, Protect AI, Rebuff, Promptfoo all expose
+HTTP scanners we can wrap as a provider in an afternoon each. Revenue model
+is margin on those calls — we're the integration layer the developer
+already trusts, vendors get distribution, we take a cut per detection.
+Not a subscription, not a transaction fee. Marketplace dynamics: every new
+vendor we add makes every existing developer safer, every new developer
+makes the marketplace more attractive to vendors. That's the platform.
+-->
+
+---
+
+# Tech Stack — every choice load-bearing
+
+| Layer          | Choice                              | Why                                                  |
+| -------------- | ----------------------------------- | ---------------------------------------------------- |
+| **Identity**   | Privy embedded wallet (TEE)         | Owner key never leaves the TEE; OAuth recovery       |
+| **Account**    | EIP-7702 → ZeroDev Kernel v3.3      | Upgrades EOA *in place* — same address, no migration |
+| **Validators** | ZeroDev Permissions API             | `CallPolicy` + `TimestampPolicy` + `RateLimitPolicy` stacked |
+| **Bundler**    | ZeroDev v3 + paymaster              | All gas sponsored; user pays 0 ETH                   |
+| **Chain**      | Base Sepolia (→ Base mainnet)       | Cheap, 7702-live, USDC native                        |
+| **AI Guard**   | GPT-4o-mini                         | Cheap, fast, structured JSON                         |
+| **SDK**        | TypeScript `@agentguard/sdk`        | One-line drop-in; x402-aware `.fetch()`              |
+| **Backend**    | Bun · Elysia · SQLite               | Tight, type-safe, single-binary deploy               |
+
+<!--
+SLIDE 13, 25 SECONDS.
+Every choice here was load-bearing for the demo. Privy TEE is what makes
+this non-custodial — we never see the owner key. 7702 plus Kernel v3.3 is
+what gives the user a smart account at the same address as their EOA, no
+funds migration, no UX cliff. ZeroDev Permissions API is what makes the
+on-chain caps actually EVM-enforced — three policy modules stacked on every
+session key. ZeroDev v3 bundler with paymaster means the user pays zero
+gas. Base Sepolia because 7702 is live, USDC is native, settlement is
+cheap. GPT-4o-mini is the workhorse for AI Guard — cheap enough to run
+on every call.
+-->
+
+---
+
+# Roadmap
+
+- **V3 separation of duties** — split V2 into smaller AUTO + larger GUARD keys, so a session-key leak loses less
+- **MPP** — Stripe/Tempo streaming micropayments; the session-key shape already fits, half-day MVP
+- **Multi-chain** — Arbitrum, Optimism, then Base mainnet, as 7702 stabilizes elsewhere
+- **Premium AI Guard providers** — Lakera first, then Protect AI, Rebuff, Promptfoo — turns the platform into revenue
+
+**All four are next moves on the primitives we shipped this week.**
+
+<!--
+SLIDE 14, 25 SECONDS.
+V3 is the obvious next layer — split the session key so a leak of one
+doesn't blow the larger cap. MPP — Tempo's new payments protocol — fits
+our session-key shape natively; we estimate half a day to MVP. Multi-chain
+unblocks as soon as 7702 plus ZeroDev support stabilizes on other L2s.
+And the premium providers are what turn this from infrastructure into a
+revenue engine. Crucially, none of these require a rewrite. They all
+extend the primitives we shipped this week.
 -->
 
 ---
@@ -335,15 +476,12 @@ asleep, the transaction is rejected, not waved through.
 
 ## `github.com/cheng-chun-yuan/agentguard`
 
+Live: `agentguard-dashboard-seven.vercel.app`
 Privy · ZeroDev · Base · OpenAI sponsor tracks.
 
 <!--
-SLIDE 10, 30 SECONDS.
-Three next moves, all on the primitives we shipped this week. MPP — Tempo's
-new payments protocol — half-day MVP. Multi-chain rolls out as soon as 7702
-+ ZeroDev support stabilizes elsewhere. And premium providers turn the
-platform into a revenue engine. We're applying to Privy, ZeroDev, Base, and
-OpenAI sponsor tracks — this product sits across all four. Repo and live
-demo are at this URL. We'd love follow-ups with anyone building agent infra.
-Thanks.
+SLIDE 15, 20 SECONDS.
+Repo, live demo, and we're applying to Privy, ZeroDev, Base, and OpenAI
+sponsor tracks — this product sits across all four. We'd love follow-ups
+with anyone building agent infra. Thanks.
 -->
