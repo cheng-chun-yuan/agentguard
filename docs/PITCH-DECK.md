@@ -94,6 +94,44 @@ style: |
     line-height: 1.5;
   }
   section.hero p strong { color: #E2A32A; font-weight: 600; }
+  section.promise {
+    justify-content: center;
+    text-align: center;
+  }
+  section.promise h1 {
+    font-size: 0.95em;
+    color: #A8A6A0;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin-bottom: 1.2em;
+  }
+  section.promise h2 {
+    font-size: 2.2em;
+    color: #E2A32A;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    max-width: 20em;
+    margin: 0 auto 0.9em auto;
+  }
+  section.promise p {
+    font-size: 1em;
+    color: #E8E6E0;
+    max-width: 36em;
+    margin: 0.5em auto;
+    line-height: 1.55;
+  }
+  section.promise p strong { color: #E2A32A; font-weight: 600; }
+  section.promise blockquote {
+    font-size: 1.1em;
+    color: #A8A6A0;
+    font-style: italic;
+    font-weight: 400;
+    max-width: 36em;
+    margin: 0.8em auto;
+  }
+  section.promise code { color: #E2A32A; }
   header, footer {
     color: #666;
     font-size: 0.65em;
@@ -148,17 +186,15 @@ Stripe-grade DX. Keys never leave the user.
 
 ---
 
-<!-- _class: hero -->
-
 # The Problem
 
 ## Pick one. Lose either way.
 
-**Custodial wallet** — Coinbase CDP, Crossmint, Privy server wallets. The platform holds your keys. Their ToS, their compliance, their exit risk — yours now.
+**Custodial wallet** — Coinbase CDP, Crossmint, Privy server wallets. The platform holds your keys. Their ToS, their compliance, their exit risk become yours.
 
-**Raw EOA** — one private key in an `.env`. One prompt injection drains it.
+**Raw EOA** — one private key in `.env`. One prompt injection drains it.
 
-Today, every AI agent that spends money picks one of these. **There is no safe third option.**
+Today, every AI agent that spends money picks one. **There is no safe third option.**
 
 <!--
 SLIDE 2, 25 SECONDS.
@@ -207,8 +243,6 @@ Every signed intent is scanned. Prompt injection → flagged → blocked before 
 **3 · You're the final word.**
 Owner key lives in a TEE. We can't move your funds. Neither can a stolen session key.
 
-> *The next three slides: each promise, even when things go wrong.*
-
 <!--
 SLIDE 4, 25 SECONDS.
 Three promises. One — your loss is bounded, hard ceiling, enforced by the
@@ -221,7 +255,7 @@ case.
 
 ---
 
-<!-- _class: hero -->
+<!-- _class: promise -->
 
 # Promise 1
 
@@ -245,7 +279,7 @@ redeploying anything. Belt and suspenders, but the belt is the EVM.
 
 ---
 
-<!-- _class: hero -->
+<!-- _class: promise -->
 
 # Promise 2
 
@@ -271,7 +305,7 @@ post-hackathon with one config line.
 
 ---
 
-<!-- _class: hero -->
+<!-- _class: promise -->
 
 # Promise 3
 
