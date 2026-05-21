@@ -31,8 +31,8 @@ Before the first judge / visitor:
 
 ### Beat 1 — Hook (0:00 – 0:12)
 
-- **Show:** Landing hero. Headline "The safety layer for AI agents that spend money.", 5-guard architecture table below.
-- **Say:** *"AgentGuard is Stripe for AI agents. Your agent transacts on-chain through a non-custodial smart account, with five guards — on-chain, off-chain, AI, human — behind a single API, all configurable in one config object. No SDK install, no clone — let me show you in the browser."*
+- **Show:** Landing hero. Headline "The safety layer for AI agents that spend money.", 5-layer architecture table below.
+- **Say:** *"AgentGuard is Stripe for AI agents. Your agent transacts on-chain through a non-custodial smart account, with five layers — Single API, on-chain cap, off-chain policy, AI Guard, human approve — all in one config object. No SDK install, no clone — let me show you in the browser."*
 - **Do:** Cursor lingers on the headline for one beat, then scrolls down past Workspace.
 
 ### Beat 2 — `Try /transfer` setup (0:12 – 0:25)

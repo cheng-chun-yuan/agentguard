@@ -1,6 +1,6 @@
 # AgentGuard
 
-> **Stripe for AI Agents.** Drop in an API key. Your agent transacts on-chain through a non-custodial smart account behind **5 configurable guards** — Single API · On-chain · Off-chain · AI · Human — that route every call to one of three execution tiers (AUTO / GUARD / HUMAN).
+> **Stripe for AI Agents.** Drop in an API key. Your agent transacts on-chain through a non-custodial smart account behind **5 configurable layers** — Single API · On-chain · Off-chain · AI · Human — that route every call to one of three execution tiers (AUTO / GUARD / HUMAN).
 
 Running today: end-to-end onboarding, off-chain policy engine, owner-signed approval queue, AI Guard with intent-diff + injection-signature providers, and x402 micropayment fast path. **Base Sepolia · Bun · Next.js 16.**
 
@@ -27,7 +27,7 @@ No existing tool combines *autonomous transacting* + *non-custodial* + *AI-aware
 
 ### Solution
 
-A **non-custodial control plane** that sits between your AI agent and the chain. The user's owner key never leaves Privy's TEE. The backend only holds **bounded session keys** with on-chain enforced limits. **5 guards in one config object**, all opt-in with safe defaults:
+A **non-custodial control plane** that sits between your AI agent and the chain. The user's owner key never leaves Privy's TEE. The backend only holds **bounded session keys** with on-chain enforced limits. **5 layers in one config object**, all opt-in with safe defaults:
 
 1. **Single API** — `new AgentGuard({ apiKey }).transfer(...)` / `.fetch(url)`. No key handling, no tier branching, no bundler boilerplate.
 2. **On-chain Guard** — ZeroDev Kernel session-key validators reject anything over policy. EVM-enforced, not a server promise.
@@ -35,7 +35,7 @@ A **non-custodial control plane** that sits between your AI agent and the chain.
 4. **AI Guard** — pluggable providers (built-in `intent-diff` + `injection-signature`, GPT-4o-mini) flag prompt injection and intent mismatches before the chain sees the UserOp. `DetectionProvider` interface is open for Lakera / Protect AI / Rebuff.
 5. **Human Approve** — owner approves via a Privy popup in the dashboard when the guards escalate.
 
-These 5 guards collapse into 3 runtime execution tiers per call: **AUTO** (agent session key signs in <1 s), **GUARD** (backend signs after policy clearance), **HUMAN** (owner approves in Privy).
+These 5 layers collapse into 3 runtime execution tiers per call: **AUTO** (agent session key signs in <1 s), **GUARD** (backend signs after policy clearance), **HUMAN** (owner approves in Privy).
 
 ### Key Features
 

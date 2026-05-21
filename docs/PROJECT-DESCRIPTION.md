@@ -1,7 +1,7 @@
 # AgentGuard
 
 **The safety layer for AI agents that spend money.**
-Non-custodial · 5 configurable guards · AI-aware · Drop-in SDK · Base Sepolia
+Non-custodial · 5 configurable layers · AI-aware · Drop-in SDK · Base Sepolia
 
 ---
 
@@ -32,7 +32,7 @@ await guard.fetch("https://api.example.com/forecast")        // x402-aware
 await guard.transfer({ to, token: "USDC", amount: "0.001" })
 ```
 
-Behind that line, **5 configurable guards** run in one config object — every layer opt-in, defaults safe:
+Behind that line, **5 configurable layers** run in one config object — every layer opt-in, defaults safe:
 
 | # | Layer | What it enforces |
 |---|---|---|
@@ -42,7 +42,7 @@ Behind that line, **5 configurable guards** run in one config object — every l
 | 4 | **AI Guard** | `intent-diff` + `injection-signature` providers, pluggable `DetectionProvider` interface for Lakera, Protect AI, Rebuff |
 | 5 | **Human Approve** | owner taps approve on anomalous tx via Privy popup; one tap signs from inside the TEE |
 
-The 5 guards collapse to 3 runtime execution tiers per call:
+The 5 layers collapse to 3 runtime execution tiers per call:
 **AUTO** (V2 session key signs, <1s) · **GUARD** (off-chain policy + AI Guard clear, V2 signs) · **HUMAN** (owner approves in Privy, async).
 
 ## Architecture
